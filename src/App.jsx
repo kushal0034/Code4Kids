@@ -4,6 +4,7 @@ import viteLogo from '/vite.svg'
 import './App.css'
 import { Routes ,Route} from "react-router-dom"
 import LandingPage from "./pages/LandingPage"
+import SigninPage from "./pages/SigninPage"
 
 function App() {
 
@@ -11,6 +12,7 @@ function App() {
     <>
     <Routes>
       <Route path="/" element={<LandingPage/>} />
+      <Route path="/login" element={<SigninPage/>} />
     </Routes>
     </>
   )

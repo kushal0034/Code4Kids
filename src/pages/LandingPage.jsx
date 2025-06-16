@@ -153,7 +153,7 @@ const LandingPage = () => {
             <div className="text-center mb-16">
               <h2 className="text-5xl font-bold text-white mb-6">
                 Why Kids Love
-                <span className="bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent"> prokject</span>
+                <span className="bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent"> Code4Kids</span>
               </h2>
               <p className="text-xl text-blue-100 max-w-2xl mx-auto">
                 Designed specifically for young minds to make programming fun, engaging, and accessible
