@@ -10,6 +10,7 @@ import ParentDashboard from './pages/ParentDashboardPage'
 import WorldsPage from './pages/WorldsPage'
 import LevelOnePage from './pages/LevelOnePage'
 import LevelTwoGame from "./pages/LevelTwoGame"
+import LevelThreeGame from './pages/LevelThreeGame'
 
 function App() {
 
@@ -25,6 +26,7 @@ function App() {
       <Route path="/worlds" element={<WorldsPage />} />
       <Route path="/level-1" element={<LevelOnePage />} />
       <Route path="/level-2" element={<LevelTwoGame />} />
+      <Route path="/level-3" element={<LevelThreeGame />} />
     </Routes>
     </>
   )
