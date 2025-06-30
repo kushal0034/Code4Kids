@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Code, Users, Trophy, Star, ChevronRight, Sparkles, Zap, BookOpen } from 'lucide-react';
+import {Link} from "react-router-dom"
 
 const LandingPage = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -75,20 +76,20 @@ const LandingPage = () => {
       <div className="relative z-10 w-full min-h-screen">
         {/* Navigation */}
         <nav className="w-full flex items-center justify-between p-6">
-          <a href="/" className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
             <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold text-white">Code4Kids</span>
-          </a>
+          </Link>
           
           <div className="flex items-center space-x-4">
-            <a href="/login" className="px-6 py-2 text-white hover:bg-white/10 rounded-full transition-all duration-300">
+            <Link to="/login" className="px-6 py-2 text-white hover:bg-white/10 rounded-full transition-all duration-300">
               Login
-            </a>
-            <a href="/register" className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full hover:scale-105 transform transition-all duration-300 shadow-lg">
-              Get Started
-            </a>
+            </Link>
+            <Link to="/register" className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full hover:scale-105 transform transition-all duration-300 shadow-lg">
+              Register
+            </Link>
           </div>
         </nav>
 
@@ -97,28 +98,62 @@ const LandingPage = () => {
           <div className="text-center">
             <div className={`transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
               <h1 className="text-6xl md:text-8xl font-bold text-white mb-6 leading-tight">
-                Code Your
+                Code Your Way to
                 <span className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent block">
-                  Adventure!
+                  Magic!
                 </span>
               </h1>
               
               <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto leading-relaxed">
-                Learn programming through magical quests, brave adventures, and epic challenges. 
-                Perfect for young coders ready to embark on their coding journey!
+                Journey through enchanted worlds, solve puzzles with programming blocks, and become the wizard you were meant to be
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-                <a href="/register" className="group px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-2xl font-bold text-lg hover:scale-105 transform transition-all duration-300 shadow-2xl flex items-center space-x-2">
+                <Link to="/register" className="group px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-2xl font-bold text-lg hover:scale-105 transform transition-all duration-300 shadow-2xl flex items-center space-x-2">
                   <Play className="w-6 h-6" />
                   <span>Start Learning</span>
                   <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </a>
+                </Link>
                 
                 <button className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-2xl font-bold text-lg hover:bg-white/20 transition-all duration-300 border border-white/20">
                   Watch Demo
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Stats Section */}
+          <div className="mt-32 py-16 bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              {[
+                { number: "9", label: "Magical Levels", subtitle: "Progressive learning adventures" },
+                { number: "500+", label: "Young Wizards", subtitle: "Students actively learning" },
+                { number: "3", label: "Enchanted Worlds", subtitle: "Village, Forest and Mountain" },
+                { number: "95%", label: "Success Rate", subtitle: "Students complete all worlds" }
+              ].map((stat, index) => (
+                <div key={index} className="group">
+                  <div className="text-4xl font-bold text-transparent bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
+                    {stat.number}
+                  </div>
+                  <div className="text-white font-bold mb-1">{stat.label}</div>
+                  <div className="text-blue-100 text-sm">{stat.subtitle}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* About Component 1 */}
+          <div className="mt-32">
+            <div className="text-center mb-16">
+              <h2 className="text-5xl font-bold text-white mb-6">
+                Programming Made Simple
+                <span className="bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent block">
+                  Through Magic
+                </span>
+              </h2>
+              <p className="text-xl text-blue-100 max-w-4xl mx-auto leading-relaxed">
+                No complex syntax or confusing code. Just drag colorful blocks, cast programming spells, and watch your wizard character come to life. Our visual programming system transforms abstract coding concepts into magical adventures that kids aged 8-14 actually understand and remember.
+              </p>
             </div>
           </div>
 
@@ -176,22 +211,18 @@ const LandingPage = () => {
             </div>
           </div>
 
-          {/* Stats Section */}
-          <div className="mt-32 py-16 bg-white/5 backdrop-blur-sm rounded-3xl border border-white/10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {[
-                { number: "10K+", label: "Happy Learners" },
-                { number: "9", label: "Epic Levels" },
-                { number: "3", label: "Magic Worlds" },
-                { number: "100%", label: "Fun Guaranteed" }
-              ].map((stat, index) => (
-                <div key={index} className="group">
-                  <div className="text-4xl font-bold text-transparent bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
-                    {stat.number}
-                  </div>
-                  <div className="text-blue-100 font-medium">{stat.label}</div>
-                </div>
-              ))}
+          {/* About Component 2 */}
+          <div className="mt-32">
+            <div className="text-center mb-16">
+              <h2 className="text-5xl font-bold text-white mb-6">
+                Three Worlds,
+                <span className="bg-gradient-to-r from-yellow-400 to-pink-500 bg-clip-text text-transparent block">
+                  Endless Possibilities
+                </span>
+              </h2>
+              <p className="text-xl text-blue-100 max-w-4xl mx-auto leading-relaxed">
+                Begin your journey in the peaceful Village learning variables, venture into the mysterious Forest mastering if-else decisions, and conquer the challenging Mountain with powerful loops. Each world builds upon the last, ensuring your young wizard develops real programming skills through epic quests and collaborative adventures.
+              </p>
             </div>
           </div>
 
@@ -215,15 +246,52 @@ const LandingPage = () => {
                   Join thousands of young coders who are already building amazing things!
                 </p>
                 
-                <a href="/register" className="group inline-flex items-center space-x-3 px-10 py-5 bg-white text-purple-600 rounded-2xl font-bold text-xl hover:scale-105 transform transition-all duration-300 shadow-2xl">
+                <Link to="/register" className="group inline-flex items-center space-x-3 px-10 py-5 bg-white text-purple-600 rounded-2xl font-bold text-xl hover:scale-105 transform transition-all duration-300 shadow-2xl">
                   <Zap className="w-6 h-6" />
                   <span>Begin Adventure</span>
                   <Star className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                </a>
+                </Link>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer className="w-full bg-black/20 backdrop-blur-sm border-t border-white/10 mt-32">
+          <div className="max-w-7xl mx-auto px-6 py-16">
+            <div className="text-center">
+              <div className="flex items-center justify-center space-x-2 mb-8">
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <span className="text-3xl font-bold text-white">Code4Kids</span>
+              </div>
+              
+              <h3 className="text-3xl font-bold text-white mb-4">
+                Three Worlds, Endless Possibilities
+              </h3>
+              
+              <p className="text-lg text-blue-100 max-w-3xl mx-auto leading-relaxed mb-12">
+                Begin your journey in the peaceful Village learning variables, venture into the mysterious Forest mastering if-else decisions, and conquer the challenging Mountain with powerful loops. Each world builds upon the last, ensuring your young wizard develops real programming skills through epic quests and collaborative adventures.
+              </p>
+              
+              <div className="flex flex-wrap justify-center gap-8 mb-12">
+                <Link to="/about" className="text-blue-100 hover:text-white transition-colors">About</Link>
+                <Link to="/worlds" className="text-blue-100 hover:text-white transition-colors">Worlds</Link>
+                <Link to="/pricing" className="text-blue-100 hover:text-white transition-colors">Pricing</Link>
+                <Link to="/contact" className="text-blue-100 hover:text-white transition-colors">Contact</Link>
+                <Link to="/privacy" className="text-blue-100 hover:text-white transition-colors">Privacy</Link>
+                <Link to="/terms" className="text-blue-100 hover:text-white transition-colors">Terms</Link>
+              </div>
+              
+              <div className="border-t border-white/10 pt-8">
+                <p className="text-blue-200 text-sm">
+                  © 2025 Code4Kids. All rights reserved. Made with ❤️ for young wizards everywhere.
+                </p>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
