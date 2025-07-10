@@ -11,6 +11,12 @@ import WorldsPage from './pages/WorldsPage'
 import LevelOnePage from './pages/LevelOnePage'
 import LevelTwoGame from "./pages/LevelTwoGame"
 import LevelThreeGame from './pages/LevelThreeGame'
+import LevelFourGame from "./pages/LevelFourGame"
+import LevelFiveGame from "./pages/LevelFiveGame"
+import LevelSixGame from './pages/LevelSixGame'
+import LevelSevenGame from './pages/LevelSevenGame'
+import LevelEightGame from './pages/LevelEightGame'
+import LevelNineGame from './pages/LevelNineGame'
 
 function App() {
 
@@ -27,6 +33,12 @@ function App() {
       <Route path="/level-1" element={<LevelOnePage />} />
       <Route path="/level-2" element={<LevelTwoGame />} />
       <Route path="/level-3" element={<LevelThreeGame />} />
+      <Route path="/level-4" element={<LevelFourGame />} />
+      <Route path="/level-5" element={<LevelFiveGame />} />
+      <Route path="/level-6" element={<LevelSixGame />} />
+      <Route path="/level-7" element={<LevelSevenGame />} />
+      <Route path='/level-8' element={<LevelEightGame />} />
+      <Route path="/level-9" element={<LevelNineGame />} />
     </Routes>
     </>
   )
