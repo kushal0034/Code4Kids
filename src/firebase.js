@@ -1,21 +1,26 @@
-// Import the functions you need from the SDKs you need
+// firebase.js
 import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyC8DukbBkQiMJAPV84pLnhLVUx_NXE90Ko",
-  authDomain: "code4kids-895f4.firebaseapp.com",
-  projectId: "code4kids-895f4",
-  storageBucket: "code4kids-895f4.firebasestorage.app",
-  messagingSenderId: "599702627168",
-  appId: "1:599702627168:web:f1d6b7e7799c836523f405",
-  measurementId: "G-KMYGDT67TJ"
+  apiKey: "AIzaSyAxR0_kCDUeNPGMSIsZEDIvi-EXBbjGaWA",
+  authDomain: "code4kids-1224d.firebaseapp.com",
+  projectId: "code4kids-1224d",
+  storageBucket: "code4kids-1224d.firebasestorage.app",
+  messagingSenderId: "136505453195",
+  appId: "1:136505453195:web:e4489e3ab246954f49c28e",
+  measurementId: "G-7DN0T7H548"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Initialize Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const analytics = getAnalytics(app);
+
+export default app;
