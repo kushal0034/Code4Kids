@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, MessageCircle, Trophy, Clock } from 'lucide-react';
+import { progressService } from '../services/progressService';
 
 const LevelTwoGame = () => {
   const [draggedBlock, setDraggedBlock] = useState(null);
@@ -11,6 +12,23 @@ const LevelTwoGame = () => {
   const [variables, setVariables] = useState({});
   const [deliveredMessages, setDeliveredMessages] = useState([]);
   const [gameMessage, setGameMessage] = useState('');
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [levelResults, setLevelResults] = useState(null);
+  const [user, setUser] = useState(null);
+
+  // Get current user on component mount
+  useEffect(() => {
+    const userData = progressService.getCurrentUser();
+    if (!userData) {
+      // Redirect to login if no user
+      window.location.href = '/login';
+    } else {
+      setUser(userData);
+    }
+  }, []);
 
   const villagers = [
     { id: 1, name: 'Baker Tom', position: 2, icon: '👨‍🍳', message: 'Fresh bread ready!', needsMessage: true },
@@ -133,6 +151,61 @@ const LevelTwoGame = () => {
     setExecutionStep(-1);
     setVariables({});
     setGameMessage('');
+    setStartTime(null);
+    setEndTime(null);
+    setShowResults(false);
+    setLevelResults(null);
+  };
+
+  const calculateStars = (timeSpent, codeBlockCount, messagesDelivered) => {
+    let stars = 1; // Base star for completion
+    
+    // Time bonus (under 45 seconds = extra star)
+    if (timeSpent < 45000) {
+      stars++;
+    }
+    
+    // Efficiency bonus (under 12 blocks = extra star)
+    if (codeBlockCount <= 11) {
+      stars++;
+    }
+    
+    return Math.min(stars, 3);
+  };
+
+  const saveProgress = async (success, timeSpent = 0) => {
+    if (!user) return;
+
+    setIsLoading(true);
+    
+    try {
+      const stars = success ? calculateStars(timeSpent, codeBlocks.length, deliveredMessages.length) : 0;
+      
+      const result = await progressService.recordLevelAttempt(
+        2, // Level 2
+        success,
+        stars,
+        timeSpent,
+        codeBlocks
+      );
+
+      if (success) {
+        setLevelResults({
+          stars,
+          timeSpent,
+          codeBlocks: codeBlocks.length,
+          messagesDelivered: deliveredMessages.length,
+          newAchievements: result.newAchievements || [],
+          newRank: result.newRank
+        });
+        setShowResults(true);
+      }
+
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const runCode = async () => {
@@ -140,12 +213,16 @@ const LevelTwoGame = () => {
     
     setIsRunning(true);
     setGameState('playing');
-    resetGame();
+    setStartTime(Date.now());
     
+    // Reset game state
     let currentPosition = 0;
     let currentVariables = {};
     let delivered = [];
     let hasMessageVariable = false;
+    setWizardPosition(0);
+    setDeliveredMessages([]);
+    setVariables({});
 
     for (let i = 0; i < codeBlocks.length; i++) {
       setExecutionStep(i);
@@ -169,6 +246,8 @@ const LevelTwoGame = () => {
               setGameMessage('Error: Create message variable first!');
               setGameState('error');
               setIsRunning(false);
+              setExecutionStep(-1);
+              await saveProgress(false);
               return;
             }
           } else if (block.id.includes('store-teacher-message')) {
@@ -180,6 +259,8 @@ const LevelTwoGame = () => {
               setGameMessage('Error: Create message variable first!');
               setGameState('error');
               setIsRunning(false);
+              setExecutionStep(-1);
+              await saveProgress(false);
               return;
             }
           } else if (block.id.includes('store-farmer-message')) {
@@ -191,6 +272,8 @@ const LevelTwoGame = () => {
               setGameMessage('Error: Create message variable first!');
               setGameState('error');
               setIsRunning(false);
+              setExecutionStep(-1);
+              await saveProgress(false);
               return;
             }
           } else if (block.id.includes('clear-message')) {
@@ -227,6 +310,8 @@ const LevelTwoGame = () => {
                 setGameMessage(`❌ Wrong message for ${villagerAtPosition.name}!`);
                 setGameState('error');
                 setIsRunning(false);
+                setExecutionStep(-1);
+                await saveProgress(false);
                 return;
               }
             } else if (!villagerAtPosition) {
@@ -236,12 +321,23 @@ const LevelTwoGame = () => {
             }
           } else if (block.id.includes('celebrate')) {
             if (delivered.length === 3) {
+              const endTime = Date.now();
+              setEndTime(endTime);
+              const timeSpent = endTime - startTime;
+              
               setGameState('success');
-              setGameMessage('🎉 All messages delivered successfully!');
+              setIsRunning(false);
+              setExecutionStep(-1);
+              
+              // Save progress to database
+              await saveProgress(true, timeSpent);
+              return;
             } else {
               setGameMessage(`Only ${delivered.length}/3 messages delivered!`);
               setGameState('error');
               setIsRunning(false);
+              setExecutionStep(-1);
+              await saveProgress(false);
               return;
             }
           }
@@ -256,15 +352,113 @@ const LevelTwoGame = () => {
     setIsRunning(false);
     
     if (delivered.length === 3) {
+      const endTime = Date.now();
+      setEndTime(endTime);
+      const timeSpent = endTime - startTime;
+      
       setGameState('success');
+      await saveProgress(true, timeSpent);
     } else {
       setGameState('error');
       setGameMessage(`Mission incomplete: ${delivered.length}/3 messages delivered`);
+      await saveProgress(false);
     }
   };
 
+  const formatTime = (ms) => {
+    const seconds = Math.floor(ms / 1000);
+    return `${seconds}s`;
+  };
+
+  const StarDisplay = ({ count, size = "w-6 h-6" }) => (
+    <div className="flex items-center space-x-1">
+      {[...Array(3)].map((_, i) => (
+        <Star 
+          key={i} 
+          className={`${size} ${
+            i < count 
+              ? 'text-yellow-400 fill-current' 
+              : 'text-white/30'
+          }`}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-800 via-orange-700 to-yellow-600 relative overflow-hidden">
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center">
+            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-white font-bold">Saving Progress...</div>
+          </div>
+        </div>
+      )}
+
+      {/* Results Modal */}
+      {showResults && levelResults && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-orange-600 to-yellow-700 rounded-3xl p-8 max-w-md w-full text-white text-center shadow-2xl">
+            <div className="text-6xl mb-4">📮</div>
+            <h2 className="text-3xl font-bold mb-4">Messages Delivered!</h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-center">
+                <StarDisplay count={levelResults.stars} size="w-8 h-8" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white/10 rounded-lg p-3">
+                  <Clock className="w-5 h-5 mx-auto mb-1" />
+                  <div className="font-bold">{formatTime(levelResults.timeSpent)}</div>
+                  <div className="opacity-80">Time</div>
+                </div>
+                <div className="bg-white/10 rounded-lg p-3">
+                  <div className="text-2xl mb-1">🧩</div>
+                  <div className="font-bold">{levelResults.codeBlocks}</div>
+                  <div className="opacity-80">Blocks Used</div>
+                </div>
+              </div>
+
+              <div className="bg-blue-500/20 rounded-lg p-3">
+                <MessageCircle className="w-6 h-6 mx-auto mb-1 text-blue-300" />
+                <div className="font-bold">{levelResults.messagesDelivered}/3</div>
+                <div className="opacity-80">Messages Delivered</div>
+              </div>
+
+              {levelResults.newAchievements.length > 0 && (
+                <div className="bg-yellow-500/20 rounded-lg p-4">
+                  <Trophy className="w-6 h-6 mx-auto mb-2 text-yellow-400" />
+                  <div className="font-bold mb-2">New Achievements!</div>
+                  {levelResults.newAchievements.map((achievement, index) => (
+                    <div key={index} className="text-sm">
+                      {achievement.icon} {achievement.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowResults(false)}
+                className="flex-1 py-3 bg-white/20 rounded-xl hover:bg-white/30 transition-colors"
+              >
+                Try Again
+              </button>
+              <Link
+                to="/worlds"
+                className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl hover:scale-105 transition-transform text-center"
+              >
+                Continue Adventure
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Background Village Elements */}
       <div className="fixed inset-0 z-0">
         {/* Village Ground */}
@@ -308,7 +502,12 @@ const LevelTwoGame = () => {
             <div className="bg-white/20 px-4 py-2 rounded-lg">
               <span className="text-white">Messages: {deliveredMessages.length}/3</span>
             </div>
-            <Link to="/dashboard" className="text-white hover:text-yellow-300 transition-colors">
+            {user && (
+              <div className="bg-white/20 px-4 py-2 rounded-lg">
+                <span className="text-white">{user.username}</span>
+              </div>
+            )}
+            <Link to="/student-dashboard" className="text-white hover:text-yellow-300 transition-colors">
               <Home className="w-5 h-5" />
             </Link>
           </div>
@@ -356,6 +555,15 @@ const LevelTwoGame = () => {
                 <li>• Move to their position</li>
                 <li>• Deliver the message</li>
                 <li>• Clear message before next delivery</li>
+              </ul>
+            </div>
+
+            <div className="bg-yellow-500/20 p-4 rounded-xl border border-yellow-400/30">
+              <h3 className="font-bold mb-2">⭐ Star Scoring:</h3>
+              <ul className="text-sm space-y-1">
+                <li>• 1 ⭐: Complete all deliveries</li>
+                <li>• 2 ⭐: Complete in under 45 seconds</li>
+                <li>• 3 ⭐: Use 11 or fewer blocks</li>
               </ul>
             </div>
           </div>
@@ -460,6 +668,18 @@ const LevelTwoGame = () => {
                 )}
               </div>
             </div>
+
+            {/* Timer Display */}
+            {startTime && !endTime && (
+              <div className="bg-purple-500/20 p-4 rounded-xl border border-purple-400/30 mb-4">
+                <div className="flex items-center justify-center space-x-2 text-white">
+                  <Clock className="w-5 h-5" />
+                  <span className="font-mono">
+                    {formatTime(Date.now() - startTime)}
+                  </span>
+                </div>
+              </div>
+            )}
             
             {/* Delivery Progress */}
             <div className="bg-green-500/20 p-4 rounded-xl border border-green-400/30 mb-4">
@@ -484,15 +704,13 @@ const LevelTwoGame = () => {
             </div>
             
             {/* Game Status */}
-            {gameState === 'success' && (
+            {gameState === 'success' && !showResults && (
               <div className="bg-green-500/20 p-4 rounded-xl border border-green-400/30 text-center">
                 <div className="text-4xl mb-2">🎉</div>
                 <div className="text-white font-bold">Mission Complete!</div>
                 <div className="text-green-200 text-sm">All messages delivered successfully!</div>
-                <div className="flex justify-center space-x-1 mt-2">
-                  <Star className="w-6 h-6 text-yellow-400 fill-current" />
-                  <Star className="w-6 h-6 text-yellow-400 fill-current" />
-                  <Star className="w-6 h-6 text-yellow-400 fill-current" />
+                <div className="flex justify-center mt-2">
+                  <StarDisplay count={3} />
                 </div>
               </div>
             )}
@@ -524,7 +742,7 @@ const LevelTwoGame = () => {
               </button>
               <button
                 onClick={runCode}
-                disabled={isRunning || codeBlocks.length === 0}
+                disabled={isRunning || codeBlocks.length === 0 || isLoading}
                 className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Play className="w-4 h-4" />
@@ -563,6 +781,7 @@ const LevelTwoGame = () => {
                       <button
                         onClick={() => removeBlock(block.uniqueId)}
                         className="opacity-0 group-hover:opacity-100 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs transition-opacity"
+                        disabled={isRunning}
                       >
                         ×
                       </button>
@@ -587,6 +806,16 @@ const LevelTwoGame = () => {
                   <div key={index}>{block.code}</div>
                 ))
               )}
+            </div>
+          </div>
+
+          {/* Progress Indicator */}
+          <div className="mt-4 bg-purple-500/20 p-3 rounded-xl border border-purple-400/30">
+            <div className="flex items-center justify-between text-white text-sm">
+              <span>Blocks Used:</span>
+              <span className={codeBlocks.length <= 11 ? 'text-green-300' : 'text-yellow-300'}>
+                {codeBlocks.length} {codeBlocks.length <= 11 ? '(Efficiency Bonus!)' : ''}
+              </span>
             </div>
           </div>
         </div>

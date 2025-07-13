@@ -16,21 +16,50 @@ import {
   Target,
   Award,
   Lock,
-  Play,
-  CheckCircle
+  Play
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { progressService } from '../services/progressService';
 
 const StudentDashboard = () => {
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [userData, setUserData] = useState(null);
-  const [userProgress, setUserProgress] = useState(null);
+  const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      const user = progressService.getCurrentUser();
+      
+      if (!user) {
+        window.location.href = '/login';
+        return;
+      }
+
+      setUserData(user);
+      
+      // Get user progress from database
+      const progress = await progressService.getDashboardData(user.uid);
+      
+      // Debug log for troubleshooting
+      console.log('Loaded progress data:', progress);
+      console.log('Achievements in progress:', progress?.achievements);
+      
+      setProgressData(progress);
+      
+    } catch (err) {
+      console.error('Error loading user data:', err);
+      setError(`Failed to load user data: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const Link = ({ to, children, className, onClick }) => (
     <a href={to} className={className} onClick={onClick}>
@@ -38,222 +67,224 @@ const StudentDashboard = () => {
     </a>
   );
 
-  // Initialize user progress structure
-  const initializeUserProgress = async (userId) => {
-    const defaultProgress = {
-      userId: userId,
-      currentLevel: 1,
-      totalStars: 0,
-      completedLevels: 0,
-      currentStreak: 0,
-      rank: "Novice Wizard",
-      lastActiveDate: new Date().toISOString(),
-      worlds: {
-        village: {
-          id: 1,
-          name: "Village Basics",
-          concept: "Variables",
-          unlocked: true,
-          progress: 0,
-          levels: {
-            level1: { id: 1, name: "Apple Collection", completed: false, stars: 0, unlocked: true },
-            level2: { id: 2, name: "Message Delivery", completed: false, stars: 0, unlocked: false },
-            level3: { id: 3, name: "Potion Ingredients", completed: false, stars: 0, unlocked: false }
-          }
-        },
-        forest: {
-          id: 2,
-          name: "Forest Decisions",
-          concept: "If/Else",
-          unlocked: false,
-          progress: 0,
-          levels: {
-            level4: { id: 4, name: "Weather Paths", completed: false, stars: 0, unlocked: false },
-            level5: { id: 5, name: "Monster Spells", completed: false, stars: 0, unlocked: false },
-            level6: { id: 6, name: "Villager Problems", completed: false, stars: 0, unlocked: false }
-          }
-        },
-        mountain: {
-          id: 3,
-          name: "Mountain Challenges",
-          concept: "Loops",
-          unlocked: false,
-          progress: 0,
-          levels: {
-            level7: { id: 7, name: "Bridge Crossing", completed: false, stars: 0, unlocked: false },
-            level8: { id: 8, name: "Rock Clearing", completed: false, stars: 0, unlocked: false },
-            level9: { id: 9, name: "Dragon Battle", completed: false, stars: 0, unlocked: false }
-          }
-        }
-      },
-      achievements: {
-        firstSteps: { name: "First Steps", icon: "🌟", earned: false, description: "Complete your first level" },
-        appleMaster: { name: "Apple Master", icon: "🍎", earned: false, description: "Perfect score in Apple Collection" },
-        variableWizard: { name: "Variable Wizard", icon: "🧙‍♂️", earned: false, description: "Master all Variable levels" },
-        decisionMaker: { name: "Decision Maker", icon: "🌲", earned: false, description: "Complete Forest World" }
-      }
-    };
-    
-    try {
-      await setDoc(doc(db, 'userProgress', userId), defaultProgress);
-      return defaultProgress;
-    } catch (error) {
-      console.error('Error initializing user progress:', error);
-      return null;
-    }
-  };
+  const sidebarItems = [
+    { id: 'logo', type: 'logo' },
+    { id: 'dashboard', icon: Home, label: 'Dashboard', path: '/student-dashboard' },
+    { id: 'adventure', icon: Map, label: 'Adventure', path: '/worlds' },
+    { id: 'achievements', icon: Trophy, label: 'Achievements', path: '/achievements' },
+    { id: 'settings', icon: Settings, label: 'Settings', path: '/student-settings' },
+    { id: 'logout', icon: LogOut, label: 'Logout', path: '/logout', type: 'logout' }
+  ];
 
-  // Load user data and progress
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userString = sessionStorage.getItem('user');
-        if (!userString) {
-          navigate('/login');
-          return;
-        }
+  const settingsSubItems = [
+    { id: 'profile', icon: User, label: 'My Wizard', path: '/profile' },
+    { id: 'progress', icon: BarChart3, label: 'Progress', path: '/user-stats' },
+    { id: 'sound', icon: Volume2, label: 'Sound Settings', path: '/sound' }
+  ];
 
-        const user = JSON.parse(userString);
-        setUserData(user);
+  // Convert database progress to display format
+  const getWorldsData = () => {
+    if (!progressData?.worlds) return [];
 
-        // Load user progress from Firestore
-        const progressRef = doc(db, 'userProgress', user.uid);
-        const progressSnap = await getDoc(progressRef);
-
-        let progressData;
-        if (progressSnap.exists()) {
-          progressData = progressSnap.data();
-        } else {
-          // Initialize progress if it doesn't exist
-          progressData = await initializeUserProgress(user.uid);
-        }
-
-        setUserProgress(progressData);
-      } catch (error) {
-        console.error('Error loading user data:', error);
-        navigate('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserData();
-  }, [navigate]);
-
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      sessionStorage.clear();
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
-  // Handle level click
-  const handleLevelClick = (levelId, isUnlocked) => {
-    if (!isUnlocked || !levelId) return;
-    
-    navigate(`/level-${levelId}`);
-  };
-
-  // Handle world navigation
-  const handleWorldNavigation = () => {
-    navigate('/worlds');
-  };
-
-  // Calculate stats from user progress
-  const calculateStats = () => {
-    if (!userProgress) return { totalLevels: 9, completedLevels: 0, totalStars: 0, earnedStars: 0, currentStreak: 0, rank: "Novice Wizard" };
-
-    const worlds = userProgress.worlds;
-    let completedLevels = 0;
-    let earnedStars = 0;
-
-    Object.values(worlds).forEach(world => {
-      Object.values(world.levels).forEach(level => {
-        if (level.completed) completedLevels++;
-        earnedStars += level.stars;
-      });
-    });
-
-    return {
-      totalLevels: 9,
-      completedLevels,
-      totalStars: 27, // 9 levels × 3 stars each
-      earnedStars,
-      currentStreak: userProgress.currentStreak || 0,
-      rank: userProgress.rank || "Novice Wizard"
-    };
-  };
-
-  // Format worlds data for display
-  const getWorldsDisplay = () => {
-    if (!userProgress) return [];
-
-    const worldsData = userProgress.worlds;
     return [
       {
         id: 1,
-        name: worldsData.village.name,
-        concept: worldsData.village.concept,
+        name: "Village Basics",
+        concept: "Variables",
         icon: "🏘️",
         color: "from-green-400 to-emerald-600",
-        progress: worldsData.village.progress,
-        unlocked: worldsData.village.unlocked,
-        levels: Object.values(worldsData.village.levels)
+        progress: progressData.worlds.village?.progress || 0,
+        unlocked: progressData.worlds.village?.unlocked || false,
+        levels: [
+          { 
+            id: 1, 
+            name: "Apple Collection", 
+            completed: progressData.worlds.village?.levels?.level1?.completed || false, 
+            stars: progressData.worlds.village?.levels?.level1?.stars || 0,
+            unlocked: true 
+          },
+          { 
+            id: 2, 
+            name: "Message Delivery", 
+            completed: progressData.worlds.village?.levels?.level2?.completed || false, 
+            stars: progressData.worlds.village?.levels?.level2?.stars || 0,
+            unlocked: progressData.worlds.village?.levels?.level1?.completed || false
+          },
+          { 
+            id: 3, 
+            name: "Potion Ingredients", 
+            completed: progressData.worlds.village?.levels?.level3?.completed || false, 
+            stars: progressData.worlds.village?.levels?.level3?.stars || 0,
+            unlocked: progressData.worlds.village?.levels?.level2?.completed || false
+          }
+        ]
       },
       {
         id: 2,
-        name: worldsData.forest.name,
-        concept: worldsData.forest.concept,
+        name: "Forest Decisions",
+        concept: "If/Else",
         icon: "🌲",
         color: "from-emerald-500 to-teal-700",
-        progress: worldsData.forest.progress,
-        unlocked: worldsData.forest.unlocked,
-        levels: Object.values(worldsData.forest.levels)
+        progress: progressData.worlds.forest?.progress || 0,
+        unlocked: progressData.worlds.forest?.unlocked || false,
+        levels: [
+          { 
+            id: 4, 
+            name: "Weather Paths", 
+            completed: progressData.worlds.forest?.levels?.level4?.completed || false, 
+            stars: progressData.worlds.forest?.levels?.level4?.stars || 0,
+            unlocked: progressData.worlds.forest?.unlocked || false
+          },
+          { 
+            id: 5, 
+            name: "Monster Spells", 
+            completed: progressData.worlds.forest?.levels?.level5?.completed || false, 
+            stars: progressData.worlds.forest?.levels?.level5?.stars || 0,
+            unlocked: progressData.worlds.forest?.levels?.level4?.completed || false
+          },
+          { 
+            id: 6, 
+            name: "Villager Problems", 
+            completed: progressData.worlds.forest?.levels?.level6?.completed || false, 
+            stars: progressData.worlds.forest?.levels?.level6?.stars || 0,
+            unlocked: progressData.worlds.forest?.levels?.level5?.completed || false
+          }
+        ]
       },
       {
         id: 3,
-        name: worldsData.mountain.name,
-        concept: worldsData.mountain.concept,
+        name: "Mountain Challenges",
+        concept: "Loops",
         icon: "⛰️",
         color: "from-blue-500 to-indigo-600",
-        progress: worldsData.mountain.progress,
-        unlocked: worldsData.mountain.unlocked,
-        levels: Object.values(worldsData.mountain.levels)
+        progress: progressData.worlds.mountain?.progress || 0,
+        unlocked: progressData.worlds.mountain?.unlocked || false,
+        levels: [
+          { 
+            id: 7, 
+            name: "Bridge Crossing", 
+            completed: progressData.worlds.mountain?.levels?.level7?.completed || false, 
+            stars: progressData.worlds.mountain?.levels?.level7?.stars || 0,
+            unlocked: progressData.worlds.mountain?.unlocked || false
+          },
+          { 
+            id: 8, 
+            name: "Rock Clearing", 
+            completed: progressData.worlds.mountain?.levels?.level8?.completed || false, 
+            stars: progressData.worlds.mountain?.levels?.level8?.stars || 0,
+            unlocked: progressData.worlds.mountain?.levels?.level7?.completed || false
+          },
+          { 
+            id: 9, 
+            name: "Dragon Battle", 
+            completed: progressData.worlds.mountain?.levels?.level9?.completed || false, 
+            stars: progressData.worlds.mountain?.levels?.level9?.stars || 0,
+            unlocked: progressData.worlds.mountain?.levels?.level8?.completed || false
+          }
+        ]
       }
     ];
   };
 
-  const sidebarItems = [
-    { id: 'dashboard', icon: Home, label: 'Dashboard' },
-    { id: 'adventure', icon: Map, label: 'Adventure', onClick: handleWorldNavigation },
-    { id: 'achievements', icon: Trophy, label: 'Achievements' },
-    { id: 'settings', icon: Settings, label: 'Settings' }
-  ];
+  const getAchievements = () => {
+    const allAchievements = [
+      { id: 'first_steps', name: "First Steps", icon: "🌟", description: "Complete your first level" },
+      { id: 'apple_master', name: "Apple Master", icon: "🍎", description: "Perfect score in Apple Collection" },
+      { id: 'message_master', name: "Message Master", icon: "📮", description: "Successfully deliver all village messages" },
+      { id: 'delivery_expert', name: "Delivery Expert", icon: "🚀", description: "Perfect score in Message Delivery" },
+      { id: 'string_wizard', name: "String Wizard", icon: "🔤", description: "Master string variables in Village levels" },
+      { id: 'speedy_messenger', name: "Speedy Messenger", icon: "⚡", description: "Deliver messages in record time" },
+      { id: 'variable_wizard', name: "Variable Wizard", icon: "🧙‍♂️", description: "Master all Variable levels" },
+      { id: 'decision_maker', name: "Decision Maker", icon: "🌲", description: "Complete all Forest Decision levels" },
+      { id: 'loop_master', name: "Loop Master", icon: "⛰️", description: "Complete all Mountain Challenge levels" },
+      { id: 'perfect_student', name: "Perfect Student", icon: "👑", description: "Get 3 stars on all levels" }
+    ];
 
-  const settingsSubItems = [
-    { id: 'profile', icon: User, label: 'My Wizard' },
-    { id: 'progress', icon: BarChart3, label: 'Progress' },
-    { id: 'sound', icon: Volume2, label: 'Sound Settings' }
-  ];
+    // Safely check achievements - handle both array and non-array cases
+    const earnedAchievements = progressData?.achievements || [];
+    const earnedIds = Array.isArray(earnedAchievements) 
+      ? earnedAchievements.map(achievement => achievement.id || achievement)
+      : [];
+
+    return allAchievements.map(achievement => ({
+      ...achievement,
+      earned: earnedIds.includes(achievement.id)
+    }));
+  };
+
+  const getStats = () => {
+    if (!progressData) {
+      return {
+        totalLevels: 9,
+        completedLevels: 0,
+        totalStars: 27,
+        earnedStars: 0,
+        currentStreak: 0,
+        rank: "Novice Wizard"
+      };
+    }
+
+    return {
+      totalLevels: 9,
+      completedLevels: progressData.totalLevelsCompleted || 0,
+      totalStars: 27,
+      earnedStars: progressData.totalStars || 0,
+      currentStreak: progressData.currentStreak || 0,
+      rank: progressData.rank || "Novice Wizard"
+    };
+  };
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    window.location.href = '/login';
+  };
+
+  const getLevelPath = (levelId) => {
+    const levelPaths = {
+      1: '/level-1',
+      2: '/level-2',
+      3: '/level-3',
+      4: '/level-4',
+      5: '/level-5',
+      6: '/level-6',
+      7: '/level-7',
+      8: '/level-8',
+      9: '/level-9'
+    };
+    return levelPaths[levelId] || '/worlds';
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white text-xl">Loading your magical dashboard...</div>
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+          <div className="text-white text-xl">Loading your magical progress...</div>
         </div>
       </div>
     );
   }
 
-  const stats = calculateStats();
-  const worldsDisplay = getWorldsDisplay();
-  const achievements = userProgress?.achievements ? Object.values(userProgress.achievements) : [];
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">❌</div>
+          <div className="text-white text-xl mb-4">Error loading data</div>
+          <button 
+            onClick={loadUserData}
+            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const worlds = getWorldsData();
+  const achievements = getAchievements();
+  const stats = getStats();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
@@ -264,14 +295,14 @@ const StudentDashboard = () => {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-6 border-b border-white/10">
-            <button onClick={() => navigate('/')} className="flex items-center space-x-3">
+            <Link to="/" className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               {isSidebarOpen && (
                 <span className="text-xl font-bold text-white">Code4Kids</span>
               )}
-            </button>
+            </Link>
           </div>
 
           {/* User Profile */}
@@ -279,7 +310,7 @@ const StudentDashboard = () => {
             <div className="p-4 border-b border-white/10">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">🧙‍♂️</span>
+                  <span className="text-white font-bold">🧙‍♂️</span>
                 </div>
                 <div>
                   <div className="text-white font-medium">{userData.username}</div>
@@ -291,7 +322,7 @@ const StudentDashboard = () => {
 
           {/* Navigation Items */}
           <nav className="flex-1 p-4 space-y-2">
-            {sidebarItems.map((item) => {
+            {sidebarItems.slice(1, -1).map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               
@@ -299,8 +330,8 @@ const StudentDashboard = () => {
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (item.onClick) {
-                      item.onClick();
+                    if (item.id === 'adventure') {
+                      window.location.href = '/worlds';
                     } else {
                       setActiveTab(item.id);
                     }
@@ -323,13 +354,14 @@ const StudentDashboard = () => {
                 {settingsSubItems.map((subItem) => {
                   const SubIcon = subItem.icon;
                   return (
-                    <button
+                    <Link
                       key={subItem.id}
+                      to={subItem.path}
                       className="flex items-center space-x-3 px-3 py-2 text-blue-200 hover:text-white transition-colors"
                     >
                       <SubIcon className="w-4 h-4" />
                       <span className="text-sm">{subItem.label}</span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>
@@ -423,9 +455,7 @@ const StudentDashboard = () => {
                       <Crown className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-white">
-                        {stats.rank.split(' ')[0]}
-                      </div>
+                      <div className="text-lg font-bold text-white">{stats.rank.split(' ')[0]}</div>
                       <div className="text-blue-200 text-sm">Current Rank</div>
                     </div>
                   </div>
@@ -434,29 +464,12 @@ const StudentDashboard = () => {
 
               {/* Worlds Grid */}
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">Your Magical Worlds</h2>
-                  <button
-                    onClick={handleWorldNavigation}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:scale-105 transition-transform flex items-center space-x-2"
-                  >
-                    <Map className="w-4 h-4" />
-                    <span>Explore Worlds</span>
-                  </button>
-                </div>
+                <h2 className="text-2xl font-bold text-white mb-6">Your Magical Worlds</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {worldsDisplay.map((world) => (
-                    <div key={world.id} className={`relative rounded-3xl p-6 text-white overflow-hidden group transition-all duration-300 ${
-                      world.unlocked 
-                        ? `bg-gradient-to-br ${world.color} hover:scale-105 cursor-pointer`
-                        : 'bg-gradient-to-br from-gray-600 to-gray-700 opacity-60'
+                  {worlds.map((world) => (
+                    <div key={world.id} className={`bg-gradient-to-br ${world.color} rounded-3xl p-6 text-white relative overflow-hidden group transition-all duration-300 ${
+                      world.unlocked ? 'hover:scale-105 cursor-pointer' : 'opacity-60'
                     }`}>
-                      {!world.unlocked && (
-                        <div className="absolute top-4 right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                          <Lock className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                      
                       <div className="relative z-10">
                         <div className="flex items-center space-x-3 mb-4">
                           <span className="text-4xl">{world.icon}</span>
@@ -464,6 +477,9 @@ const StudentDashboard = () => {
                             <h3 className="text-xl font-bold">{world.name}</h3>
                             <p className="text-white/80 text-sm">{world.concept}</p>
                           </div>
+                          {!world.unlocked && (
+                            <Lock className="w-6 h-6 text-white/60" />
+                          )}
                         </div>
                         
                         <div className="mb-4">
@@ -481,18 +497,18 @@ const StudentDashboard = () => {
 
                         <div className="space-y-2">
                           {world.levels.map((level) => (
-                            <div 
-                              key={level.id} 
-                              className={`flex items-center justify-between bg-white/10 rounded-lg p-2 transition-all duration-200 ${
-                                level.unlocked ? 'hover:bg-white/20 cursor-pointer' : 'opacity-50'
-                              }`}
-                              onClick={() => handleLevelClick(level.id, level.unlocked)}
-                            >
+                            <div key={level.id} className={`flex items-center justify-between bg-white/10 rounded-lg p-2 ${
+                              level.unlocked ? 'hover:bg-white/20 cursor-pointer' : 'opacity-50'
+                            }`} onClick={() => {
+                              if (level.unlocked) {
+                                window.location.href = getLevelPath(level.id);
+                              }
+                            }}>
                               <div className="flex items-center space-x-2">
-                                {!level.unlocked && <Lock className="w-3 h-3" />}
+                                {!level.unlocked && <Lock className="w-3 h-3 text-white/60" />}
                                 <span className="text-sm">{level.name}</span>
-                                {level.unlocked && !level.completed && (
-                                  <Play className="w-3 h-3 text-green-300" />
+                                {level.unlocked && (
+                                  <Play className="w-3 h-3 text-white/60" />
                                 )}
                               </div>
                               <div className="flex items-center space-x-1">
@@ -506,6 +522,15 @@ const StudentDashboard = () => {
                             </div>
                           ))}
                         </div>
+
+                        {world.unlocked && (
+                          <button 
+                            onClick={() => window.location.href = '/worlds'}
+                            className="mt-4 w-full py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors text-sm font-medium"
+                          >
+                            Enter World
+                          </button>
+                        )}
                       </div>
                       
                       <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
@@ -513,254 +538,173 @@ const StudentDashboard = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Recent Achievements */}
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-6">Recent Achievements</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {achievements.slice(0, 4).map((achievement, index) => (
+                    <div key={index} className={`p-4 rounded-2xl border transition-all duration-300 ${
+                      achievement.earned 
+                        ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30' 
+                        : 'bg-white/5 border-white/10'
+                    }`}>
+                      <div className="text-center">
+                        <div className="text-3xl mb-2">{achievement.icon}</div>
+                        <h3 className={`font-bold mb-1 ${achievement.earned ? 'text-green-300' : 'text-white/60'}`}>
+                          {achievement.name}
+                        </h3>
+                        <p className={`text-xs ${achievement.earned ? 'text-green-200' : 'text-white/40'}`}>
+                          {achievement.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">Ready for your next adventure?</h3>
+                    <p className="text-purple-100">Continue your coding journey and unlock new worlds!</p>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button 
+                      onClick={() => window.location.href = '/worlds'}
+                      className="px-6 py-3 bg-white/20 rounded-xl hover:bg-white/30 transition-colors"
+                    >
+                      Continue Learning
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('achievements')}
+                      className="px-6 py-3 bg-white rounded-xl text-purple-600 hover:scale-105 transition-transform"
+                    >
+                      View Achievements
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Adventure Tab */}
           {activeTab === 'adventure' && (
-            <div className="space-y-8">
-              <div className="text-center">
-                <h2 className="text-4xl font-bold text-white mb-4">Choose Your Adventure!</h2>
-                <p className="text-blue-200 text-xl mb-8">Select a magical world to continue your coding quest</p>
-              </div>
-              
-              {/* Quick Stats */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-6">
-                <div className="grid grid-cols-3 gap-6 text-center">
-                  <div>
-                    <div className="text-2xl font-bold text-green-400">{worldsDisplay.filter(w => w.unlocked).length}</div>
-                    <div className="text-white/60 text-sm">Worlds Unlocked</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-yellow-400">
-                      {worldsDisplay.reduce((total, world) => total + world.levels.filter(l => l.completed).length, 0)}
-                    </div>
-                    <div className="text-white/60 text-sm">Levels Completed</div>
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-blue-400">
-                      {worldsDisplay.reduce((total, world) => total + world.levels.reduce((sum, l) => sum + l.stars, 0), 0)}
-                    </div>
-                    <div className="text-white/60 text-sm">Total Stars</div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* World Selection */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {worldsDisplay.map((world) => (
-                  <div key={world.id} className={`relative rounded-3xl p-6 text-white overflow-hidden group transition-all duration-300 ${
-                    world.unlocked 
-                      ? `bg-gradient-to-br ${world.color} hover:scale-105 cursor-pointer`
-                      : 'bg-gradient-to-br from-gray-600 to-gray-700 opacity-60'
-                  }`}>
-                    {!world.unlocked && (
-                      <div className="absolute top-4 right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                        <Lock className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    
-                    {world.progress === 100 && (
-                      <div className="absolute top-4 right-4 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center animate-pulse">
-                        <Crown className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    
-                    <div className="relative z-10">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <span className="text-4xl">{world.icon}</span>
-                        <div>
-                          <h3 className="text-xl font-bold">{world.name}</h3>
-                          <p className="text-white/80 text-sm">{world.concept}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <div className="flex justify-between text-sm mb-2">
-                          <span>Progress</span>
-                          <span>{world.progress}%</span>
-                        </div>
-                        <div className="w-full bg-white/20 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full transition-all duration-500 ${
-                              world.progress === 100 
-                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
-                                : 'bg-white'
-                            }`}
-                            style={{ width: `${world.progress}%` }}
-                          ></div>
-                        </div>
-                        {world.progress === 100 && (
-                          <div className="text-yellow-200 text-xs mt-1 font-bold text-center">✨ Complete! ✨</div>
-                        )}
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        {world.levels.slice(0, 2).map((level) => (
-                          <div key={level.id} className="flex items-center justify-between bg-white/10 rounded-lg p-2">
-                            <div className="flex items-center space-x-2">
-                              {!level.unlocked && <Lock className="w-3 h-3" />}
-                              {level.completed && <CheckCircle className="w-3 h-3 text-green-400" />}
-                              <span className={`text-sm ${level.completed ? 'text-green-200' : 'text-white'}`}>
-                                {level.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              {[...Array(3)].map((_, i) => (
-                                <Star 
-                                  key={i} 
-                                  className={`w-3 h-3 ${i < level.stars ? 'text-yellow-400 fill-current' : 'text-white/30'}`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                        {world.levels.length > 2 && (
-                          <div className="text-center text-xs text-white/60">
-                            +{world.levels.length - 2} more levels
-                          </div>
-                        )}
-                      </div>
-                      
-                      {world.unlocked ? (
-                        <button 
-                          onClick={() => {
-                            const nextLevel = world.levels.find(l => l.unlocked && !l.completed);
-                            const levelToPlay = nextLevel || world.levels.find(l => l.unlocked);
-                            if (levelToPlay) {
-                              handleLevelClick(levelToPlay.id, true);
-                            }
-                          }}
-                          className={`w-full py-2 px-4 rounded-xl font-bold transition-transform hover:scale-105 flex items-center justify-center space-x-2 ${
-                            world.progress === 100 
-                              ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white' 
-                              : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-                          }`}
-                        >
-                          <Play className="w-4 h-4" />
-                          <span>{world.progress === 100 ? 'Replay World' : 'Continue Adventure'}</span>
-                        </button>
-                      ) : (
-                        <div className="w-full py-2 px-4 bg-white/10 text-white/60 rounded-xl text-center text-sm">
-                          Complete previous world to unlock
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="text-center space-y-4">
-                <button 
-                  onClick={handleWorldNavigation}
-                  className="px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold rounded-2xl hover:scale-105 transition-transform flex items-center space-x-2 mx-auto"
-                >
-                  <Map className="w-5 h-5" />
-                  <span>Explore All Worlds</span>
-                </button>
-                
-                <p className="text-blue-200 text-sm">
-                  Visit the worlds page to see detailed level information and progress
-                </p>
-              </div>
+            <div className="text-center py-20">
+              <div className="text-6xl mb-6">🗺️</div>
+              <h2 className="text-3xl font-bold text-white mb-4">Adventure Awaits!</h2>
+              <p className="text-blue-200 mb-8">Choose your next magical coding quest</p>
+              <button 
+                onClick={() => window.location.href = '/worlds'}
+                className="px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold rounded-2xl hover:scale-105 transition-transform"
+              >
+                Start Adventure
+              </button>
             </div>
           )}
 
           {/* Achievements Tab */}
           {activeTab === 'achievements' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold text-white">Your Magical Achievements</h2>
-                <div className="text-right">
-                  <div className="text-white font-bold">
-                    {achievements.filter(a => a.earned).length}/{achievements.length} Unlocked
-                  </div>
-                  <div className="text-blue-200 text-sm">Keep coding to unlock more!</div>
+              <h2 className="text-3xl font-bold text-white">Your Magical Achievements</h2>
+              
+              {/* Achievement Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{achievements.filter(a => a.earned).length}</div>
+                  <div className="text-blue-200 text-sm">Achievements Unlocked</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{stats.earnedStars}</div>
+                  <div className="text-blue-200 text-sm">Total Stars Earned</div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
+                  <Target className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-white">{Math.round((achievements.filter(a => a.earned).length / achievements.length) * 100)}%</div>
+                  <div className="text-blue-200 text-sm">Completion Rate</div>
                 </div>
               </div>
-              
+
+              {/* Achievement Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {achievements.map((achievement, index) => (
-                  <div key={index} className={`p-6 rounded-3xl border transition-all duration-300 transform hover:scale-105 ${
+                  <div key={index} className={`p-6 rounded-3xl border transition-all duration-300 ${
                     achievement.earned 
-                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30 shadow-lg shadow-green-500/25' 
-                      : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30 transform hover:scale-105' 
+                      : 'bg-white/5 border-white/10'
                   }`}>
                     <div className="text-center">
-                      <div className={`text-6xl mb-4 ${achievement.earned ? 'animate-bounce' : ''}`}>
-                        {achievement.icon}
-                      </div>
+                      <div className="text-6xl mb-4">{achievement.icon}</div>
                       <h3 className={`text-xl font-bold mb-2 ${achievement.earned ? 'text-green-300' : 'text-white/60'}`}>
                         {achievement.name}
                       </h3>
                       <p className={`${achievement.earned ? 'text-green-200' : 'text-white/40'}`}>
                         {achievement.description}
                       </p>
-                      {achievement.earned ? (
-                        <div className="mt-4">
-                          <span className="inline-flex items-center space-x-2 bg-green-500/20 text-green-300 px-3 py-2 rounded-full text-sm">
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Achievement Unlocked!</span>
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="mt-4">
-                          <span className="inline-flex items-center space-x-2 bg-white/10 text-white/60 px-3 py-2 rounded-full text-sm">
-                            <Lock className="w-4 h-4" />
-                            <span>Keep Learning</span>
-                          </span>
+                      {achievement.earned && (
+                        <div className="mt-4 inline-flex items-center space-x-2 bg-green-500/20 px-3 py-1 rounded-full">
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                          <span className="text-green-300 text-sm">Unlocked</span>
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-              
-              {/* Achievement Progress */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-6">
-                <h3 className="text-xl font-bold text-white mb-4">Achievement Progress</h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-sm text-white mb-2">
-                      <span>Overall Progress</span>
-                      <span>{achievements.filter(a => a.earned).length}/{achievements.length}</span>
-                    </div>
-                    <div className="w-full bg-white/20 rounded-full h-3">
-                      <div 
-                        className="bg-gradient-to-r from-green-400 to-emerald-500 h-3 rounded-full transition-all duration-1000"
-                        style={{ width: `${(achievements.filter(a => a.earned).length / achievements.length) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div className="bg-white/5 rounded-xl p-4">
-                      <div className="text-2xl font-bold text-green-400">
-                        {achievements.filter(a => a.earned).length}
-                      </div>
-                      <div className="text-sm text-white/60">Earned</div>
-                    </div>
-                    <div className="bg-white/5 rounded-xl p-4">
-                      <div className="text-2xl font-bold text-blue-400">
-                        {achievements.filter(a => !a.earned).length}
-                      </div>
-                      <div className="text-sm text-white/60">Remaining</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-6">⚙️</div>
-              <h2 className="text-3xl font-bold text-white mb-4">Wizard Settings</h2>
-              <p className="text-blue-200">Customize your magical experience</p>
+            <div className="space-y-6">
+              <h2 className="text-3xl font-bold text-white">Wizard Settings</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <User className="w-8 h-8 text-blue-400" />
+                    <h3 className="text-xl font-bold text-white">Profile Settings</h3>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-white/60 text-sm mb-1">Username</label>
+                      <div className="text-white font-medium">{userData?.username}</div>
+                    </div>
+                    <div>
+                      <label className="block text-white/60 text-sm mb-1">Email</label>
+                      <div className="text-white font-medium">{userData?.email}</div>
+                    </div>
+                    <div>
+                      <label className="block text-white/60 text-sm mb-1">Rank</label>
+                      <div className="text-white font-medium">{stats.rank}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <Volume2 className="w-8 h-8 text-purple-400" />
+                    <h3 className="text-xl font-bold text-white">Audio Settings</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white">Sound Effects</span>
+                      <button className="w-12 h-6 bg-green-500 rounded-full p-1">
+                        <div className="w-4 h-4 bg-white rounded-full transform translate-x-6"></div>
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white">Background Music</span>
+                      <button className="w-12 h-6 bg-gray-500 rounded-full p-1">
+                        <div className="w-4 h-4 bg-white rounded-full"></div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </main>
