@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Star, Lock, Play, ChevronRight } from 'lucide-react';
+import { Sparkles, Star, Lock, Play, ChevronRight, ArrowLeft, Home, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
 
 const WorldsPage = () => {
+  const navigate = useNavigate();
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [particles, setParticles] = useState([]);
+  const [userProgress, setUserProgress] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Generate floating particles
@@ -18,64 +25,127 @@ const WorldsPage = () => {
       });
     }
     setParticles(newParticles);
+
+    // Load user data and progress
+    loadUserData();
   }, []);
 
-  const worlds = [
-    {
-      id: 1,
-      name: "Village Basics",
-      concept: "Variables",
-      icon: "🏘️",
-      color: "from-green-400 to-emerald-600",
-      shadowColor: "shadow-green-500/50",
-      unlocked: true,
-      progress: 100,
-      description: "Learn the fundamentals of coding through village adventures",
-      levels: [
-        { id: 1, name: "Apple Collection", concept: "Counter Variables", unlocked: true, completed: true, stars: 3 },
-        { id: 2, name: "Message Delivery", concept: "String Variables", unlocked: true, completed: true, stars: 2 },
-        { id: 3, name: "Potion Ingredients", concept: "Math Variables", unlocked: true, completed: false, stars: 0 }
-      ]
-    },
-    {
-      id: 2,
-      name: "Forest Decisions",
-      concept: "If/Else Logic",
-      icon: "🌲",
-      color: "from-emerald-500 to-teal-700",
-      shadowColor: "shadow-emerald-500/50",
-      unlocked: true,
-      progress: 33,
-      description: "Master conditional logic through mystical forest challenges",
-      levels: [
-        { id: 4, name: "Weather Paths", concept: "Basic If/Else", unlocked: true, completed: true, stars: 3 },
-        { id: 5, name: "Monster Spells", concept: "Multiple Conditions", unlocked: true, completed: false, stars: 0 },
-        { id: 6, name: "Villager Problems", concept: "Nested Logic", unlocked: false, completed: false, stars: 0 }
-      ]
-    },
-    {
-      id: 3,
-      name: "Mountain Challenges",
-      concept: "Loops & Iteration",
-      icon: "⛰️",
-      color: "from-blue-500 to-indigo-600",
-      shadowColor: "shadow-blue-500/50",
-      unlocked: false,
-      progress: 0,
-      description: "Conquer repetition and loops in the magical mountains",
-      levels: [
-        { id: 7, name: "Bridge Crossing", concept: "For Loops", unlocked: false, completed: false, stars: 0 },
-        { id: 8, name: "Rock Clearing", concept: "While Loops", unlocked: false, completed: false, stars: 0 },
-        { id: 9, name: "Dragon Battle", concept: "Nested Loops", unlocked: false, completed: false, stars: 0 }
-      ]
+  const loadUserData = async () => {
+    try {
+      const userString = sessionStorage.getItem('user');
+      if (!userString) {
+        navigate('/login');
+        return;
+      }
+
+      const user = JSON.parse(userString);
+      setUserData(user);
+
+      // Load user progress from Firestore
+      const progressRef = doc(db, 'userProgress', user.uid);
+      const progressSnap = await getDoc(progressRef);
+
+      if (progressSnap.exists()) {
+        setUserProgress(progressSnap.data());
+      } else {
+        // If no progress exists, redirect to dashboard to initialize
+        navigate('/student-dashboard');
+        return;
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      navigate('/login');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const getWorldsFromProgress = () => {
+    if (!userProgress) return [];
+
+    const worldsData = userProgress.worlds;
+    return [
+      {
+        id: 1,
+        name: worldsData.village.name,
+        concept: worldsData.village.concept,
+        icon: "🏘️",
+        color: "from-green-400 to-emerald-600",
+        shadowColor: "shadow-green-500/50",
+        unlocked: worldsData.village.unlocked,
+        progress: worldsData.village.progress,
+        description: "Learn the fundamentals of coding through village adventures",
+        levels: Object.values(worldsData.village.levels),
+        completed: worldsData.village.progress === 100
+      },
+      {
+        id: 2,
+        name: worldsData.forest.name,
+        concept: worldsData.forest.concept,
+        icon: "🌲",
+        color: "from-emerald-500 to-teal-700",
+        shadowColor: "shadow-emerald-500/50",
+        unlocked: worldsData.forest.unlocked,
+        progress: worldsData.forest.progress,
+        description: "Master conditional logic through mystical forest challenges",
+        levels: Object.values(worldsData.forest.levels),
+        completed: worldsData.forest.progress === 100
+      },
+      {
+        id: 3,
+        name: worldsData.mountain.name,
+        concept: worldsData.mountain.concept,
+        icon: "⛰️",
+        color: "from-blue-500 to-indigo-600",
+        shadowColor: "shadow-blue-500/50",
+        unlocked: worldsData.mountain.unlocked,
+        progress: worldsData.mountain.progress,
+        description: "Conquer repetition and loops in the magical mountains",
+        levels: Object.values(worldsData.mountain.levels),
+        completed: worldsData.mountain.progress === 100
+      }
+    ];
+  };
+
+  const handleLevelClick = (levelId, isUnlocked) => {
+    if (!isUnlocked) return;
+    navigate(`/level-${levelId}`);
+  };
+
+  const handleEnterWorld = (worldId) => {
+    const worlds = getWorldsFromProgress();
+    const world = worlds.find(w => w.id === worldId);
+    
+    if (!world || !world.unlocked) return;
+
+    // Find the first unlocked level in the world
+    const firstUnlockedLevel = world.levels.find(level => level.unlocked);
+    if (firstUnlockedLevel) {
+      navigate(`/level-${firstUnlockedLevel.id}`);
+    }
+  };
 
   const Link = ({ to, children, className }) => (
-    <a href={to} className={className}>
+    <button onClick={() => navigate(to)} className={className}>
       {children}
-    </a>
+    </button>
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white text-xl">Loading magical worlds...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const worlds = getWorldsFromProgress();
+  const totalLevels = worlds.reduce((sum, world) => sum + world.levels.length, 0);
+  const completedLevels = worlds.reduce((sum, world) => sum + world.levels.filter(l => l.completed).length, 0);
+  const totalStars = worlds.reduce((sum, world) => sum + world.levels.reduce((starSum, l) => starSum + l.stars, 0), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
@@ -116,22 +186,63 @@ const WorldsPage = () => {
       </div>
 
       {/* Header */}
-      <div className="relative z-10 text-center py-12 px-6">
-        <Link to="/" className="inline-flex items-center space-x-2 mb-8 hover:scale-105 transition-transform">
-          <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-white" />
+      <div className="relative z-10 bg-black/20 backdrop-blur-sm border-b border-white/20 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button onClick={() => navigate('/student-dashboard')} className="flex items-center space-x-2 text-white hover:text-yellow-300 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+              <span>Back to Dashboard</span>
+            </button>
+            <div className="h-6 w-px bg-white/30" />
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-6 h-6 text-yellow-400" />
+              <span className="text-white font-bold">Magical Worlds</span>
+            </div>
           </div>
-          <span className="text-2xl font-bold text-white">Code4Kids</span>
-        </Link>
-        
+          <div className="flex items-center space-x-4">
+            {userData && (
+              <div className="text-white">
+                <span className="font-medium">Welcome, {userData.username}!</span>
+              </div>
+            )}
+            <button onClick={() => navigate('/student-dashboard')} className="text-white hover:text-yellow-300 transition-colors">
+              <Home className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 text-center py-12 px-6">
         <h1 className="text-5xl md:text-7xl font-bold mb-6">
           <span className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
             Magical Worlds
           </span>
         </h1>
-        <p className="text-xl text-blue-200 max-w-3xl mx-auto">
+        <p className="text-xl text-blue-200 max-w-3xl mx-auto mb-8">
           Embark on epic coding adventures across three enchanted realms. Master programming concepts through magical quests!
         </p>
+        
+        {/* Progress Overview */}
+        <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-6 max-w-4xl mx-auto mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div>
+              <div className="text-3xl font-bold text-green-400">{completedLevels}</div>
+              <div className="text-white font-medium">Levels Completed</div>
+              <div className="text-blue-200 text-sm">out of {totalLevels} total</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-yellow-400">{totalStars}</div>
+              <div className="text-white font-medium">Stars Earned</div>
+              <div className="text-blue-200 text-sm">out of {totalLevels * 3} possible</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-purple-400">{worlds.filter(w => w.unlocked).length}</div>
+              <div className="text-white font-medium">Worlds Unlocked</div>
+              <div className="text-blue-200 text-sm">out of 3 magical realms</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Worlds Container */}
@@ -147,8 +258,8 @@ const WorldsPage = () => {
             
             {/* World Island */}
             <div 
-              className={`relative w-80 h-96 cursor-pointer transition-all duration-500 hover:scale-105 ${
-                world.unlocked ? 'hover:-translate-y-4' : 'opacity-60'
+              className={`relative w-80 h-96 cursor-pointer transition-all duration-500 ${
+                world.unlocked ? 'hover:scale-105 hover:-translate-y-4' : 'opacity-60'
               }`}
               style={{
                 animation: `worldFloat 6s ease-in-out infinite`,
@@ -195,8 +306,15 @@ const WorldsPage = () => {
                   </div>
                 )}
                 
+                {/* Completion Crown for Completed Worlds */}
+                {world.completed && (
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center z-20 animate-pulse">
+                    <span className="text-white text-xs">👑</span>
+                  </div>
+                )}
+                
                 {/* World Icon */}
-                <div className="text-8xl mb-4 filter drop-shadow-lg animate-bounce" style={{ animationDuration: '3s' }}>
+                <div className={`text-8xl mb-4 filter drop-shadow-lg ${world.unlocked ? 'animate-bounce' : ''}`} style={{ animationDuration: '3s' }}>
                   {world.icon}
                 </div>
                 
@@ -217,10 +335,17 @@ const WorldsPage = () => {
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-yellow-400 to-orange-500 h-2 rounded-full transition-all duration-1000"
+                        className={`h-2 rounded-full transition-all duration-1000 ${
+                          world.completed 
+                            ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
+                            : 'bg-gradient-to-r from-yellow-400 to-orange-500'
+                        }`}
                         style={{ width: `${world.progress}%` }}
                       />
                     </div>
+                    {world.completed && (
+                      <div className="text-yellow-300 text-xs mt-1 font-bold">✨ World Complete! ✨</div>
+                    )}
                   </div>
                 )}
                 
@@ -229,16 +354,26 @@ const WorldsPage = () => {
                   {world.levels.map((level) => (
                     <div 
                       key={level.id}
-                      className={`bg-white/10 backdrop-blur-sm rounded-lg p-2 mx-4 border transition-all duration-300 ${
+                      className={`relative group/level bg-white/10 backdrop-blur-sm rounded-lg p-2 mx-4 border transition-all duration-300 ${
                         level.unlocked 
-                          ? 'border-white/30 hover:bg-white/20' 
+                          ? 'border-white/30 hover:bg-white/20 cursor-pointer' 
                           : 'border-white/10 opacity-50'
-                      }`}
+                      } ${level.completed ? 'bg-green-500/20 border-green-400/50' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLevelClick(level.id, level.unlocked);
+                      }}
                     >
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center space-x-2">
                           {!level.unlocked && <Lock className="w-3 h-3 text-gray-400" />}
-                          <span className="text-white font-medium">{level.name}</span>
+                          {level.completed && <CheckCircle className="w-3 h-3 text-green-400" />}
+                          <span className={`font-medium ${level.completed ? 'text-green-200' : 'text-white'}`}>
+                            {level.name}
+                          </span>
+                          {level.unlocked && !level.completed && (
+                            <Play className="w-3 h-3 text-green-300 opacity-0 group-hover/level:opacity-100 transition-opacity" />
+                          )}
                         </div>
                         <div className="flex items-center space-x-1">
                           {[...Array(3)].map((_, i) => (
@@ -259,10 +394,27 @@ const WorldsPage = () => {
                 
                 {/* Enter World Button */}
                 {world.unlocked && (
-                  <button className="mt-4 px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:scale-105 transition-transform shadow-lg flex items-center space-x-2 mx-auto">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEnterWorld(world.id);
+                    }}
+                    className={`mt-4 px-6 py-2 text-white font-bold rounded-xl hover:scale-105 transition-transform shadow-lg flex items-center space-x-2 mx-auto ${
+                      world.completed 
+                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' 
+                        : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                    }`}
+                  >
                     <Play className="w-4 h-4" />
-                    <span>Enter World</span>
+                    <span>{world.completed ? 'Replay World' : 'Enter World'}</span>
                   </button>
+                )}
+                
+                {/* Locked World Message */}
+                {!world.unlocked && (
+                  <div className="mt-4 px-4 py-2 bg-red-500/20 text-red-200 rounded-xl text-sm">
+                    Complete previous world to unlock
+                  </div>
                 )}
               </div>
             </div>
@@ -280,6 +432,12 @@ const WorldsPage = () => {
                 <div>
                   <h3 className="text-2xl font-bold text-white">{selectedWorld.name}</h3>
                   <p className="text-blue-200">{selectedWorld.concept}</p>
+                  {selectedWorld.completed && (
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className="text-yellow-400 text-sm">👑</span>
+                      <span className="text-yellow-300 text-sm font-bold">World Mastered!</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <button 
@@ -292,17 +450,49 @@ const WorldsPage = () => {
             
             <p className="text-blue-100 mb-6">{selectedWorld.description}</p>
             
+            {/* World Progress */}
+            <div className="bg-white/10 rounded-xl p-4 mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white font-bold">World Progress</span>
+                <span className="text-white">{selectedWorld.progress}%</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-3">
+                <div 
+                  className={`h-3 rounded-full transition-all duration-1000 ${
+                    selectedWorld.completed 
+                      ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
+                      : 'bg-gradient-to-r from-blue-400 to-purple-500'
+                  }`}
+                  style={{ width: `${selectedWorld.progress}%` }}
+                />
+              </div>
+            </div>
+            
             <div className="space-y-3 mb-6">
               <h4 className="text-lg font-bold text-white">Levels in this World:</h4>
               {selectedWorld.levels.map((level) => (
-                <div key={level.id} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div 
+                  key={level.id} 
+                  className={`bg-white/5 rounded-xl p-4 border border-white/10 transition-all duration-200 ${
+                    level.unlocked ? 'hover:bg-white/10 cursor-pointer' : ''
+                  } ${level.completed ? 'bg-green-500/10 border-green-400/30' : ''}`}
+                  onClick={() => level.unlocked && handleLevelClick(level.id, level.unlocked)}
+                >
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center space-x-2">
                         {!level.unlocked && <Lock className="w-4 h-4 text-gray-400" />}
-                        <h5 className="text-white font-bold">{level.name}</h5>
+                        {level.completed && <CheckCircle className="w-4 h-4 text-green-400" />}
+                        <h5 className={`font-bold ${level.completed ? 'text-green-300' : 'text-white'}`}>
+                          {level.name}
+                        </h5>
+                        {level.unlocked && !level.completed && (
+                          <Play className="w-4 h-4 text-green-300" />
+                        )}
                       </div>
-                      <p className="text-blue-200 text-sm">{level.concept}</p>
+                      <p className="text-blue-200 text-sm">
+                        {level.completed ? 'Completed! Click to replay.' : level.unlocked ? 'Ready to play!' : 'Complete previous levels to unlock.'}
+                      </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className="flex space-x-1">
@@ -333,8 +523,16 @@ const WorldsPage = () => {
               >
                 Back to Worlds
               </button>
-              <button className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold rounded-xl hover:scale-105 transition-transform">
-                Start Adventure
+              <button 
+                onClick={() => handleEnterWorld(selectedWorld.id)}
+                className={`flex-1 px-6 py-3 text-white font-bold rounded-xl hover:scale-105 transition-transform ${
+                  selectedWorld.completed 
+                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' 
+                    : 'bg-gradient-to-r from-green-500 to-blue-500'
+                }`}
+                disabled={!selectedWorld.unlocked}
+              >
+                {selectedWorld.completed ? 'Replay Adventure' : 'Start Adventure'}
               </button>
             </div>
           </div>

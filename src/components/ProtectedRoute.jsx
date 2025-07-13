@@ -1,20 +1,21 @@
-// ProtectedRoute.jsx
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const location = useLocation();
   const userString = sessionStorage.getItem('user');
-  
+
   if (!userString) {
-    return <Navigate to="/" replace />;
+    // User is not authenticated, redirect to the login page
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
+
   const user = JSON.parse(userString);
-  
+
   // Check if user has the required role
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    // User doesn't have the required role, redirect to their dashboard
-    switch(user.role) {
+    // User doesn't have the required role, redirect to their dashboard or home
+    switch (user.role) {
       case 'student':
         return <Navigate to="/student-dashboard" replace />;
       case 'teacher':
@@ -25,7 +26,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
         return <Navigate to="/" replace />;
     }
   }
-  
+
+  // User is authorized, render the protected component
   return children;
 };
 

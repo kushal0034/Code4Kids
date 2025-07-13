@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Mail, Lock, LogIn, CheckCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -15,17 +15,35 @@ const LoginPage = () => {
   const [popupMessage, setPopupMessage] = useState('');
   const [popupType, setPopupType] = useState('success');
 
-  React.useEffect(() => {
+  useEffect(() => {
     setIsVisible(true);
+    // Check if user is already authenticated
+    const userString = sessionStorage.getItem('user');
+    if (userString) {
+      const user = JSON.parse(userString);
+      switch(user.role) {
+        case 'student':
+          navigate('/student-dashboard', { replace: true });
+          break;
+        case 'teacher':
+          navigate('/teacher-dashboard', { replace: true });
+          break;
+        case 'parent':
+          navigate('/parent-dashboard', { replace: true });
+          break;
+        default:
+          navigate('/', { replace: true });
+      }
+    }
     // Clear any existing session
     sessionStorage.clear();
-  }, []);
+  }, [navigate]);
 
   const showMessage = (message, type = 'success') => {
     setPopupMessage(message);
     setPopupType(type);
     setShowPopup(true);
-    
+
     setTimeout(() => {
       setShowPopup(false);
     }, 3000);
@@ -33,25 +51,22 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       showMessage('Please fill in all fields!', 'error');
       return;
     }
-
     setLoading(true);
-
     try {
       // Sign in with email and password
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
       // Get user data from Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid));
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        
+
         // Store user data in sessionStorage
         sessionStorage.setItem('user', JSON.stringify({
           uid: user.uid,
@@ -59,36 +74,35 @@ const LoginPage = () => {
           username: userData.username,
           role: userData.role
         }));
-
         showMessage('Login successful! Redirecting...', 'success');
-        
+
         // Navigate based on role
         setTimeout(() => {
           switch(userData.role) {
             case 'student':
-              navigate('/student-dashboard');
+              navigate('/student-dashboard', { replace: true });
               break;
             case 'teacher':
-              navigate('/teacher-dashboard');
+              navigate('/teacher-dashboard', { replace: true });
               break;
             case 'parent':
-              navigate('/parent-dashboard');
+              navigate('/parent-dashboard', { replace: true });
               break;
             default:
-              navigate('/');
+              navigate('/', { replace: true });
           }
         }, 1500);
       } else {
         showMessage('User data not found!', 'error');
         await auth.signOut();
       }
-      
+
     } catch (error) {
       console.error('Login error:', error);
-      
+
       // Handle specific Firebase errors
       let errorMessage = 'Login failed. Please try again.';
-      
+
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email!';
       } else if (error.code === 'auth/wrong-password') {
@@ -100,7 +114,7 @@ const LoginPage = () => {
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
-      
+
       showMessage(errorMessage, 'error');
     } finally {
       setLoading(false);
@@ -108,13 +122,13 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900" style={{ 
+    <div className="w-full min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900" style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #581c87 0%, #1e3a8a 50%, #312e81 100%)'
     }}>
       {/* Fixed Background Layer */}
       <div className="fixed inset-0 w-full h-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 -z-10"></div>
-      
+
       {/* Animated Background Elements */}
       <div className="fixed inset-0 opacity-30 pointer-events-none">
         <div className="absolute top-10 left-10 w-20 h-20 bg-yellow-400 rounded-full animate-pulse"></div>
@@ -132,8 +146,8 @@ const LoginPage = () => {
             showPopup ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-10 opacity-0 scale-95'
           }`}>
             <div className={`px-8 py-6 rounded-2xl shadow-2xl flex items-center space-x-4 ${
-              popupType === 'success' 
-                ? 'bg-gradient-to-r from-green-500 to-emerald-600' 
+              popupType === 'success'
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600'
                 : 'bg-gradient-to-r from-red-500 to-pink-600'
             }`}>
               {popupType === 'success' ? (
@@ -150,7 +164,7 @@ const LoginPage = () => {
       {/* Main Content Container */}
       <div className="relative z-10 w-full min-h-screen flex items-center justify-center px-6 py-12">
         <div className={`w-full max-w-md transform transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-          
+
           {/* Logo Section */}
           <div className="text-center mb-12">
             <button onClick={() => navigate('/')} className="inline-flex items-center space-x-3 mb-8 group">
@@ -159,7 +173,7 @@ const LoginPage = () => {
               </div>
               <span className="text-4xl font-bold text-white">Code4Kids</span>
             </button>
-            
+
             <h1 className="text-3xl font-bold text-white mb-2">
               Welcome Back, Young Wizard!
             </h1>
@@ -171,7 +185,7 @@ const LoginPage = () => {
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-8 shadow-2xl">
             <div className="space-y-6">
-              
+
               {/* Email Field */}
               <div className="space-y-2">
                 <label htmlFor="email" className="block text-white font-medium text-sm">
@@ -238,9 +252,9 @@ const LoginPage = () => {
 
             {/* Forgot Password Link */}
             <div className="text-center mt-6">
-              <button 
+              <button
                 type="button"
-                onClick={() => navigate('/forgot-password')} 
+                onClick={() => navigate('/forgot-password')}
                 className="text-blue-200 hover:text-white transition-colors text-sm"
               >
                 Forgot your spell? Reset password
@@ -254,7 +268,7 @@ const LoginPage = () => {
               <p className="text-blue-100 mb-4">
                 New to Code4Kids?
               </p>
-              <button 
+              <button
                 onClick={() => navigate('/register')}
                 className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl hover:scale-105 transform transition-all duration-300 shadow-lg"
               >
