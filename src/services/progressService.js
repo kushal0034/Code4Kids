@@ -268,6 +268,8 @@ class ProgressService {
   calculateWorldProgress(worldData) {
     const levels = Object.values(worldData.levels);
     const completedLevels = levels.filter(level => level.completed).length;
+    // Handle empty levels array to avoid NaN
+    if (levels.length === 0) return 0;
     return Math.round((completedLevels / levels.length) * 100);
   }
 
