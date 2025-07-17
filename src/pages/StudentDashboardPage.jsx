@@ -7,14 +7,12 @@ import {
   Settings, 
   LogOut, 
   User,
-  BarChart3,
   Volume2,
   Star,
   Crown,
   Zap,
   BookOpen,
   Target,
-  Award,
   Lock,
   Play
 } from 'lucide-react';
@@ -46,10 +44,8 @@ const StudentDashboard = () => {
 
       setUserData(user);
       
-      // Get user progress from database
       const progress = await progressService.getDashboardData(user.uid);
       
-      // Debug log for troubleshooting
       console.log('Loaded progress data:', progress);
       console.log('Achievements in progress:', progress?.achievements);
       
@@ -70,12 +66,6 @@ const StudentDashboard = () => {
     { id: 'achievements', icon: Trophy, label: 'Achievements', path: '/achievements' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
     { id: 'logout', icon: LogOut, label: 'Logout', path: '/logout', type: 'logout' }
-  ];
-
-  const settingsSubItems = [
-    { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
-    { id: 'progress', icon: BarChart3, label: 'Progress', path: '/progress' },
-    { id: 'sound', icon: Volume2, label: 'Sound', path: '/sound' }
   ];
 
   const getWorldsData = () => {
@@ -275,15 +265,9 @@ const StudentDashboard = () => {
 
   const getLevelPath = (levelId) => {
     const levelPaths = {
-      1: '/level-1',
-      2: '/level-2',
-      3: '/level-3',
-      4: '/level-4',
-      5: '/level-5',
-      6: '/level-6',
-      7: '/level-7',
-      8: '/level-8',
-      9: '/level-9'
+      1: '/level-1', 2: '/level-2', 3: '/level-3',
+      4: '/level-4', 5: '/level-5', 6: '/level-6',
+      7: '/level-7', 8: '/level-8', 9: '/level-9'
     };
     return levelPaths[levelId] || '/worlds';
   };
@@ -381,29 +365,10 @@ const StudentDashboard = () => {
                 </button>
               );
             })}
-
-            {/* Settings Submenu */}
-            {activeTab === 'settings' && isSidebarOpen && (
-              <div className="ml-4 space-y-1 border-l-2 border-purple-400 pl-4">
-                {settingsSubItems.map((subItem) => {
-                  const SubIcon = subItem.icon;
-                  return (
-                    <Link
-                      key={subItem.id}
-                      to={subItem.path}
-                      className="flex items-center space-x-3 px-3 py-2 text-blue-200 hover:text-white transition-colors"
-                    >
-                      <SubIcon className="w-4 h-4" />
-                      <span className="text-sm">{subItem.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-white/10 mt-auto">
             <button
               onClick={handleLogout}
               className="w-full flex items-center space-x-3 px-4 py-3 text-red-300 hover:bg-red-500/20 rounded-xl transition-all duration-300"
@@ -441,8 +406,9 @@ const StudentDashboard = () => {
           </div>
         </header>
 
-        {/* Dashboard Content */}
+        {/* Tabbed Content */}
         <main className="p-6">
+          {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <div className="space-y-8">
               {/* Stats Cards */}
@@ -458,7 +424,6 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center">
@@ -470,7 +435,6 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-500 rounded-2xl flex items-center justify-center">
@@ -482,7 +446,6 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center">
@@ -617,7 +580,6 @@ const StudentDashboard = () => {
             <div className="space-y-6">
               <h2 className="text-3xl font-bold text-white">Your Magical Achievements</h2>
               
-              {/* Achievement Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 text-center">
                   <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
@@ -636,7 +598,6 @@ const StudentDashboard = () => {
                 </div>
               </div>
 
-              {/* Achievement Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {achievements.map((achievement, index) => (
                   <div key={index} className={`p-6 rounded-3xl border transition-all duration-300 ${
