@@ -1141,9 +1141,27 @@ const ParentDashboard = () => {
     return messageTime.toLocaleDateString();
   };
 
-  const handleLogout = () => {
-    sessionStorage.clear();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      // Clear all session data
+      sessionStorage.clear();
+      
+      // Clear cached user data from progressService
+      progressService.clearCurrentUser();
+      
+      // Sign out from Firebase Auth
+      const { auth } = await import('./firebase');
+      await auth.signOut();
+      
+      // Navigate to login
+      navigate('/login', { replace: true });
+      
+      console.log('Parent logged out successfully');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still navigate to login even if there's an error
+      navigate('/login', { replace: true });
+    }
   };
 
   const handleSendMessage = async (e) => {

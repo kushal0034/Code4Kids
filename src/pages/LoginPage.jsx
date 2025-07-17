@@ -16,15 +16,22 @@ const LoginPage = () => {
   const [popupType, setPopupType] = useState('success');
 
   useEffect(() => {
-    setIsVisible(true);
+    const initializeCleanState = async () => {
+      setIsVisible(true);
+      
+      // First, clear any existing session to ensure clean state
+      sessionStorage.clear();
+      
+      // Also sign out from Firebase Auth to ensure clean state
+      try {
+        await auth.signOut();
+        console.log('Previous session cleared successfully');
+      } catch (error) {
+        console.log('Auth signout error (this is normal on first load):', error);
+      }
+    };
     
-    // First, clear any existing session to ensure clean state
-    sessionStorage.clear();
-    
-    // Also sign out from Firebase Auth to ensure clean state
-    auth.signOut().catch((error) => {
-      console.log('Auth signout error (this is normal on first load):', error);
-    });
+    initializeCleanState();
   }, [navigate]);
 
   const showMessage = (message, type = 'success') => {

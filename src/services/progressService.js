@@ -18,6 +18,11 @@ class ProgressService {
     return this.currentUser;
   }
 
+  // Clear cached user data (for logout)
+  clearCurrentUser() {
+    this.currentUser = null;
+  }
+
   // Get user's progress document
   async getUserProgress(userId) {
     try {

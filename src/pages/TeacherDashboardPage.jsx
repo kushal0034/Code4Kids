@@ -132,10 +132,17 @@ const TeacherDashboardPage = () => {
   }, [selectedParent, user]);
 
   // Handle logout
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
       // Clear all session data
       sessionStorage.clear();
+      
+      // Clear cached user data from progressService
+      progressService.clearCurrentUser();
+      
+      // Sign out from Firebase Auth
+      const { auth } = await import('./firebase');
+      await auth.signOut();
       
       // Reset local state
       setUser(null);
