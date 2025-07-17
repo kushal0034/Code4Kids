@@ -17,26 +17,14 @@ const LoginPage = () => {
 
   useEffect(() => {
     setIsVisible(true);
-    // Check if user is already authenticated
-    const userString = sessionStorage.getItem('user');
-    if (userString) {
-      const user = JSON.parse(userString);
-      switch(user.role) {
-        case 'student':
-          navigate('/student-dashboard', { replace: true });
-          break;
-        case 'teacher':
-          navigate('/teacher-dashboard', { replace: true });
-          break;
-        case 'parent':
-          navigate('/parent-dashboard', { replace: true });
-          break;
-        default:
-          navigate('/', { replace: true });
-      }
-    }
-    // Clear any existing session
+    
+    // First, clear any existing session to ensure clean state
     sessionStorage.clear();
+    
+    // Also sign out from Firebase Auth to ensure clean state
+    auth.signOut().catch((error) => {
+      console.log('Auth signout error (this is normal on first load):', error);
+    });
   }, [navigate]);
 
   const showMessage = (message, type = 'success') => {

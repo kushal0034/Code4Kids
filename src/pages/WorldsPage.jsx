@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Star, 
   Lock, 
@@ -7,9 +7,6 @@ import {
   CheckCircle, 
   ArrowLeft, 
   Home, 
-  Trophy,
-  Clock,
-  Target,
   Sparkles
 } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
@@ -21,7 +18,6 @@ const WorldsPage = () => {
   const [selectedWorld, setSelectedWorld] = useState(null);
   const [particles, setParticles] = useState([]);
   const [userProgress, setUserProgress] = useState(null);
-  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -76,7 +72,6 @@ const WorldsPage = () => {
       }
 
       const user = JSON.parse(userString);
-      setUserData(user);
 
       // Load user progress from Firestore
       const progressRef = doc(db, 'userProgress', user.uid);
@@ -209,15 +204,30 @@ const WorldsPage = () => {
         />
       ))}
 
+      {/* Navbar */}
+      <div className="relative z-10 bg-black/20 backdrop-blur-sm border-b border-white/20 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-6 h-6 text-yellow-400" />
+              <h1 className="text-2xl font-bold text-white">Worlds</h1>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link 
+              to="/student-dashboard"
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center space-x-2"
+            >
+              <Home className="w-4 h-4" />
+              <span>Return Dashboard</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="relative z-10 text-center pt-12 pb-8">
+      <div className="relative z-10 text-center pt-8 pb-8">
         <div className="flex items-center justify-center space-x-2 mb-4">
-          <button
-            onClick={() => navigate('/student-dashboard')}
-            className="text-white/80 hover:text-white transition-colors"
-          >
-            <Home className="w-6 h-6" />
-          </button>
           <Sparkles className="w-8 h-8 text-yellow-400" />
           <h1 className="text-4xl font-bold text-white">Choose Your Adventure</h1>
           <Sparkles className="w-8 h-8 text-yellow-400" />

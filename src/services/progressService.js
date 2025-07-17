@@ -1,5 +1,5 @@
 // src/services/progressService.js
-import { doc, setDoc, getDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, addDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../pages/firebase';
 
 class ProgressService {
@@ -71,8 +71,8 @@ class ProgressService {
           }
         },
         achievements: [],
-        lastPlayed: serverTimestamp(),
-        createdAt: serverTimestamp()
+        lastPlayed: new Date(),
+        createdAt: new Date()
       };
 
       await setDoc(doc(db, 'userProgress', userId), initialProgress);
@@ -138,7 +138,7 @@ class ProgressService {
         const updateData = {
           [`worlds.${world}.levels.${level}`]: updatedLevelData,
           [`worlds.${world}.progress`]: worldProgress,
-          lastPlayed: serverTimestamp()
+          lastPlayed: new Date()
         };
 
         // Update total stats if level was not previously completed
@@ -194,7 +194,7 @@ class ProgressService {
         // Just record the attempt
         await updateDoc(progressRef, {
           [`worlds.${world}.levels.${level}.attempts`]: updatedLevelData.attempts,
-          lastPlayed: serverTimestamp()
+          lastPlayed: new Date()
         });
 
         await this.recordGameSession(user.uid, levelId, success, 0, timeSpent, codeBlocks);
@@ -221,7 +221,7 @@ class ProgressService {
           type: block.type,
           text: block.text
         })),
-        timestamp: serverTimestamp()
+        timestamp: new Date()
       };
 
       await setDoc(doc(db, 'gameSessions', `${userId}_${Date.now()}`), sessionData);
@@ -758,22 +758,609 @@ class ProgressService {
     }
   }
 
+  // Get user data from database
+  async getUserData(userId) {
+    try {
+      console.log('Fetching user data for userId:', userId);
+      const userRef = doc(db, 'users', userId);
+      const userDoc = await getDoc(userRef);
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        console.log('Retrieved user data from database:', userData);
+        return userData;
+      } else {
+        console.error('User document not found for userId:', userId);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      throw error;
+    }
+  }
+
   // Update user profile
   async updateUserProfile(userId, profileData) {
     try {
+      console.log('Updating user profile for userId:', userId);
+      console.log('Profile data to update:', profileData);
+      
       const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, {
+      
+      const updateData = {
         username: profileData.username,
         email: profileData.email,
         parentName: profileData.parentName,
         parentEmail: profileData.parentEmail,
-        updatedAt: serverTimestamp()
-      });
+        updatedAt: new Date()
+      };
       
-      console.log('Profile updated successfully');
-      return { success: true };
+      console.log('Updating document with data:', updateData);
+      await updateDoc(userRef, updateData);
+      
+      // Fetch the updated user data to ensure it was saved correctly
+      const updatedUserDoc = await getDoc(userRef);
+      if (updatedUserDoc.exists()) {
+        const updatedUserData = updatedUserDoc.data();
+        console.log('Profile updated successfully, new data:', updatedUserData);
+        return { success: true, userData: updatedUserData };
+      } else {
+        console.error('User document not found after update');
+        throw new Error('User document not found after update');
+      }
     } catch (error) {
       console.error('Error updating user profile:', error);
+      throw error;
+    }
+  }
+
+  // Get all students for teacher dashboard
+  async getAllStudents() {
+    try {
+      console.log('Fetching all students for teacher dashboard');
+      const studentsQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'student'),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const studentsSnapshot = await getDocs(studentsQuery);
+      const students = [];
+      
+      for (const doc of studentsSnapshot.docs) {
+        const studentData = doc.data();
+        const studentId = doc.id;
+        
+        // Get student progress data
+        const progressData = await this.getUserProgress(studentId);
+        
+        const studentInfo = {
+          id: studentId,
+          name: studentData.username || 'Unknown Student',
+          email: studentData.email || '',
+          avatar: this.getAvatarForStudent(studentData.username),
+          rank: progressData?.rank || 'Novice Wizard',
+          level: this.getCurrentLevel(progressData),
+          progress: this.getOverallProgress(progressData),
+          lastActive: this.formatLastActive(progressData?.lastPlayed),
+          completedLevels: progressData?.totalLevelsCompleted || 0,
+          totalStars: progressData?.totalStars || 0,
+          currentWorld: this.getCurrentWorld(progressData),
+          status: this.getStudentStatus(progressData?.lastPlayed),
+          createdAt: studentData.createdAt,
+          progressData: progressData
+        };
+        
+        students.push(studentInfo);
+      }
+      
+      console.log('Fetched students:', students);
+      return students;
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      throw error;
+    }
+  }
+
+  // Get recent activity for teacher dashboard
+  async getRecentActivity() {
+    try {
+      console.log('Fetching recent activity');
+      const sessionsQuery = query(
+        collection(db, 'gameSessions'),
+        where('success', '==', true),
+        orderBy('timestamp', 'desc'),
+        limit(10)
+      );
+      
+      const sessionsSnapshot = await getDocs(sessionsQuery);
+      const activities = [];
+      
+      for (const sessionDoc of sessionsSnapshot.docs) {
+        const sessionData = sessionDoc.data();
+        
+        // Get student name
+        const studentDoc = await getDoc(doc(db, 'users', sessionData.userId));
+        const studentName = studentDoc.exists() ? studentDoc.data().username : 'Unknown Student';
+        
+        const activity = {
+          student: studentName,
+          action: this.getActivityDescription(sessionData.levelId, sessionData.stars),
+          time: this.formatTimeAgo(sessionData.timestamp),
+          type: sessionData.stars === 3 ? 'achievement' : 'completion'
+        };
+        
+        activities.push(activity);
+      }
+      
+      console.log('Fetched recent activity:', activities);
+      return activities;
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+      return [];
+    }
+  }
+
+  // Get teacher dashboard data
+  async getTeacherDashboardData() {
+    try {
+      console.log('Fetching teacher dashboard data');
+      const [students, recentActivity] = await Promise.all([
+        this.getAllStudents(),
+        this.getRecentActivity()
+      ]);
+      
+      const classStats = this.calculateClassStats(students);
+      const worldProgress = this.calculateWorldProgressStats(students);
+      
+      return {
+        students,
+        classStats,
+        worldProgress,
+        recentActivity
+      };
+    } catch (error) {
+      console.error('Error fetching teacher dashboard data:', error);
+      throw error;
+    }
+  }
+
+  // Helper methods for teacher dashboard
+  getAvatarForStudent(username) {
+    if (!username) return '👤';
+    const avatars = ['👧', '👦', '🧒', '👨‍🎓', '👩‍🎓'];
+    const index = username.length % avatars.length;
+    return avatars[index];
+  }
+
+  getCurrentLevel(progressData) {
+    if (!progressData || !progressData.worlds) return 1;
+    
+    let currentLevel = 1;
+    const worlds = ['village', 'forest', 'mountain'];
+    
+    for (const worldKey of worlds) {
+      const world = progressData.worlds[worldKey];
+      if (world && world.levels) {
+        for (const levelKey of Object.keys(world.levels)) {
+          const level = world.levels[levelKey];
+          if (level.completed) {
+            currentLevel = this.getLevelNumber(levelKey);
+          } else if (level.unlocked) {
+            return this.getLevelNumber(levelKey);
+          }
+        }
+      }
+    }
+    
+    return Math.min(currentLevel + 1, 9);
+  }
+
+  getLevelNumber(levelKey) {
+    const levelMap = {
+      'level1': 1, 'level2': 2, 'level3': 3,
+      'level4': 4, 'level5': 5, 'level6': 6,
+      'level7': 7, 'level8': 8, 'level9': 9
+    };
+    return levelMap[levelKey] || 1;
+  }
+
+  getOverallProgress(progressData) {
+    if (!progressData || !progressData.worlds) return 0;
+    
+    let totalLevels = 0;
+    let completedLevels = 0;
+    
+    Object.values(progressData.worlds).forEach(world => {
+      if (world.levels) {
+        Object.values(world.levels).forEach(level => {
+          totalLevels++;
+          if (level.completed) completedLevels++;
+        });
+      }
+    });
+    
+    return totalLevels > 0 ? Math.round((completedLevels / totalLevels) * 100) : 0;
+  }
+
+  getCurrentWorld(progressData) {
+    if (!progressData || !progressData.worlds) return 'Village Basics';
+    
+    const worldNames = {
+      village: 'Village Basics',
+      forest: 'Forest Decisions',
+      mountain: 'Mountain Challenges'
+    };
+    
+    // Find the current world based on progress
+    if (progressData.worlds.mountain && progressData.worlds.mountain.unlocked) {
+      return worldNames.mountain;
+    }
+    if (progressData.worlds.forest && progressData.worlds.forest.unlocked) {
+      return worldNames.forest;
+    }
+    
+    return worldNames.village;
+  }
+
+  getStudentStatus(lastPlayed) {
+    if (!lastPlayed) return 'inactive';
+    
+    const now = new Date();
+    const lastPlayedDate = lastPlayed.toDate ? lastPlayed.toDate() : new Date(lastPlayed);
+    const diffDays = Math.floor((now - lastPlayedDate) / (1000 * 60 * 60 * 24));
+    
+    return diffDays <= 2 ? 'active' : 'inactive';
+  }
+
+  formatLastActive(lastPlayed) {
+    if (!lastPlayed) return 'Never';
+    
+    const now = new Date();
+    const lastPlayedDate = lastPlayed.toDate ? lastPlayed.toDate() : new Date(lastPlayed);
+    const diffMs = now - lastPlayedDate;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${diffDays} days ago`;
+  }
+
+  formatTimeAgo(timestamp) {
+    const now = new Date();
+    const time = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    return `${diffDays} days ago`;
+  }
+
+  getActivityDescription(levelId, stars) {
+    const levelNames = {
+      1: 'Apple Collection',
+      2: 'Message Delivery',
+      3: 'Potion Brewing',
+      4: 'Weather Paths',
+      5: 'Monster Spells',
+      6: 'Villager Problems',
+      7: 'Bridge Crossing',
+      8: 'Rock Clearing',
+      9: 'Dragon Battle'
+    };
+    
+    const levelName = levelNames[levelId] || `Level ${levelId}`;
+    if (stars === 3) {
+      return `Perfect score in ${levelName}`;
+    }
+    return `Completed ${levelName}`;
+  }
+
+  calculateClassStats(students) {
+    const totalStudents = students.length;
+    const activeStudents = students.filter(s => s.status === 'active').length;
+    const averageProgress = totalStudents > 0 ? 
+      Math.round(students.reduce((acc, s) => acc + s.progress, 0) / totalStudents) : 0;
+    const totalLevelsCompleted = students.reduce((acc, s) => acc + s.completedLevels, 0);
+    const totalStarsEarned = students.reduce((acc, s) => acc + s.totalStars, 0);
+    const topPerformer = students.length > 0 ? 
+      students.reduce((prev, current) => (prev.totalStars > current.totalStars) ? prev : current) : null;
+    
+    return {
+      totalStudents,
+      activeStudents,
+      averageProgress,
+      totalLevelsCompleted,
+      totalStarsEarned,
+      topPerformer
+    };
+  }
+
+  calculateWorldProgressStats(students) {
+    const worlds = [
+      { key: 'village', name: 'Village Basics', icon: '🏘️', color: 'from-green-400 to-emerald-600' },
+      { key: 'forest', name: 'Forest Decisions', icon: '🌲', color: 'from-emerald-500 to-teal-700' },
+      { key: 'mountain', name: 'Mountain Challenges', icon: '⛰️', color: 'from-blue-500 to-indigo-600' }
+    ];
+    
+    return worlds.map(world => {
+      let studentsCompleted = 0;
+      let studentsInProgress = 0;
+      let totalStars = 0;
+      let totalLevels = 0;
+      
+      students.forEach(student => {
+        if (student.progressData?.worlds?.[world.key]) {
+          const worldData = student.progressData.worlds[world.key];
+          const worldProgress = this.calculateWorldProgress(worldData);
+          
+          if (worldProgress === 100) {
+            studentsCompleted++;
+          } else if (worldProgress > 0) {
+            studentsInProgress++;
+          }
+          
+          // Calculate average stars for this world
+          if (worldData.levels) {
+            Object.values(worldData.levels).forEach(level => {
+              if (level.completed) {
+                totalStars += level.stars || 0;
+                totalLevels++;
+              }
+            });
+          }
+        }
+      });
+      
+      const averageStars = totalLevels > 0 ? (totalStars / totalLevels).toFixed(1) : '0.0';
+      
+      return {
+        name: world.name,
+        icon: world.icon,
+        color: world.color,
+        studentsCompleted,
+        studentsInProgress,
+        averageStars: parseFloat(averageStars)
+      };
+    });
+  }
+
+  // Get all parents with their student information
+  async getAllParents() {
+    try {
+      console.log('Fetching all parents for teacher communication');
+      const studentsQuery = query(
+        collection(db, 'users'),
+        where('role', '==', 'student'),
+        where('parentEmail', '!=', ''),
+        orderBy('parentEmail')
+      );
+      
+      const studentsSnapshot = await getDocs(studentsQuery);
+      const parentMap = new Map();
+      
+      for (const doc of studentsSnapshot.docs) {
+        const studentData = doc.data();
+        const parentEmail = studentData.parentEmail;
+        
+        if (parentEmail && parentEmail.trim()) {
+          if (!parentMap.has(parentEmail)) {
+            parentMap.set(parentEmail, {
+              id: parentEmail,
+              name: studentData.parentName || 'Parent',
+              email: parentEmail,
+              students: [],
+              lastMessage: null,
+              unreadCount: 0
+            });
+          }
+          
+          parentMap.get(parentEmail).students.push({
+            id: doc.id,
+            name: studentData.username || 'Student',
+            email: studentData.email
+          });
+        }
+      }
+      
+      const parents = Array.from(parentMap.values());
+      console.log('Fetched parents:', parents);
+      return parents;
+    } catch (error) {
+      console.error('Error fetching parents:', error);
+      throw error;
+    }
+  }
+
+  // Send message to parent
+  async sendMessageToParent(teacherId, parentEmail, message) {
+    try {
+      console.log('Sending message to parent:', { teacherId, parentEmail, message });
+      
+      const messageData = {
+        senderId: teacherId,
+        senderRole: 'teacher',
+        recipientEmail: parentEmail,
+        recipientRole: 'parent',
+        message: message.trim(),
+        timestamp: new Date(),
+        read: false
+      };
+      
+      const messagesRef = collection(db, 'messages');
+      await addDoc(messagesRef, messageData);
+      
+      console.log('Message sent successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
+  }
+
+  // Get messages between teacher and parent
+  async getMessagesWithParent(teacherId, parentEmail) {
+    try {
+      console.log('Fetching messages between teacher and parent:', { teacherId, parentEmail });
+      
+      const messagesQuery = query(
+        collection(db, 'messages'),
+        where('senderId', 'in', [teacherId, parentEmail]),
+        where('recipientEmail', 'in', [parentEmail, teacherId]),
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      );
+      
+      const messagesSnapshot = await getDocs(messagesQuery);
+      const messages = messagesSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp)
+      }));
+      
+      console.log('Fetched messages:', messages);
+      return messages.reverse(); // Show oldest first
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
+  }
+
+  // Listen to messages in real-time
+  subscribeToMessages(teacherId, parentEmail, callback) {
+    try {
+      const messagesQuery = query(
+        collection(db, 'messages'),
+        where('senderId', 'in', [teacherId, parentEmail]),
+        where('recipientEmail', 'in', [parentEmail, teacherId]),
+        orderBy('timestamp', 'desc'),
+        limit(50)
+      );
+      
+      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+        const messages = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp)
+        }));
+        
+        callback(messages.reverse()); // Show oldest first
+      });
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error subscribing to messages:', error);
+      throw error;
+    }
+  }
+
+  // Mark messages as read
+  async markMessagesAsRead(teacherId, parentEmail) {
+    try {
+      const messagesQuery = query(
+        collection(db, 'messages'),
+        where('senderId', '==', parentEmail),
+        where('recipientEmail', '==', teacherId),
+        where('read', '==', false)
+      );
+      
+      const messagesSnapshot = await getDocs(messagesQuery);
+      
+      const updatePromises = messagesSnapshot.docs.map(doc => 
+        updateDoc(doc.ref, { read: true })
+      );
+      
+      await Promise.all(updatePromises);
+      console.log('Messages marked as read');
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }
+
+  // Get messages for parent dashboard
+  async getParentMessages(parentEmail) {
+    try {
+      console.log('Fetching messages for parent:', parentEmail);
+      
+      // Get messages where parent is either sender or recipient
+      const [sentMessages, receivedMessages] = await Promise.all([
+        // Messages sent by parent
+        getDocs(query(
+          collection(db, 'messages'),
+          where('senderId', '==', parentEmail),
+          orderBy('timestamp', 'desc'),
+          limit(50)
+        )),
+        // Messages received by parent
+        getDocs(query(
+          collection(db, 'messages'),
+          where('recipientEmail', '==', parentEmail),
+          orderBy('timestamp', 'desc'),
+          limit(50)
+        ))
+      ]);
+      
+      // Combine and sort all messages
+      const allMessages = [];
+      
+      sentMessages.docs.forEach(doc => {
+        allMessages.push({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp)
+        });
+      });
+      
+      receivedMessages.docs.forEach(doc => {
+        allMessages.push({
+          id: doc.id,
+          ...doc.data(),
+          timestamp: doc.data().timestamp.toDate ? doc.data().timestamp.toDate() : new Date(doc.data().timestamp)
+        });
+      });
+      
+      // Remove duplicates and sort by timestamp
+      const uniqueMessages = allMessages.filter((msg, index, self) => 
+        index === self.findIndex(m => m.id === msg.id)
+      );
+      
+      uniqueMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      console.log('Fetched parent messages:', uniqueMessages);
+      return uniqueMessages;
+    } catch (error) {
+      console.error('Error fetching parent messages:', error);
+      throw error;
+    }
+  }
+
+  // Send reply from parent to teacher
+  async sendParentReply(parentEmail, teacherId, message) {
+    try {
+      console.log('Sending reply from parent to teacher:', { parentEmail, teacherId, message });
+      
+      const messageData = {
+        senderId: parentEmail,
+        senderRole: 'parent',
+        recipientEmail: teacherId,
+        recipientRole: 'teacher',
+        message: message.trim(),
+        timestamp: new Date(),
+        read: false
+      };
+      
+      const messagesRef = collection(db, 'messages');
+      await addDoc(messagesRef, messageData);
+      
+      console.log('Parent reply sent successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending parent reply:', error);
       throw error;
     }
   }

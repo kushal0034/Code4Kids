@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { progressService } from '../services/progressService';
 import { 
   Sparkles, 
   Home, 
@@ -21,139 +22,238 @@ import {
   Zap,
   Crown,
   ChevronRight,
-  Eye
+  Eye,
+  RefreshCw,
+  Send,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 const TeacherDashboardPage = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [user, setUser] = useState(null);
+  const [parents, setParents] = useState([]);
+  const [selectedParent, setSelectedParent] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [messageLoading, setMessageLoading] = useState(false);
+  const navigate = useNavigate();
 
 
   const sidebarItems = [
     { id: 'logo', type: 'logo' },
     { id: 'dashboard', icon: Home, label: 'Dashboard', path: '/teacher-dashboard' },
     { id: 'analytics', icon: BarChart3, label: 'Analytics', path: '/analytics' },
+    { id: 'parent-communication', icon: MessageCircle, label: 'Parent Communication', path: '/parent-communication' },
     { id: 'reports', icon: FileText, label: 'Reports', path: '/reports' },
     { id: 'settings', icon: Settings, label: 'Settings', path: '/teacher-settings' },
     { id: 'logout', icon: LogOut, label: 'Logout', path: '/logout', type: 'logout' }
   ];
 
-  const settingsSubItems = [
-    { id: 'parent-communication', icon: MessageCircle, label: 'Parents Communication', path: '/parent-communication' },
-    { id: 'support', icon: HelpCircle, label: 'Support Center', path: '/support' }
-  ];
+  // Load dashboard data from Firebase
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        
+        // Check if user is authenticated and has teacher role
+        const currentUser = progressService.getCurrentUser();
+        if (!currentUser) {
+          navigate('/login');
+          return;
+        }
+        
+        if (currentUser.role !== 'teacher') {
+          navigate('/dashboard');
+          return;
+        }
+        
+        setUser(currentUser);
+        
+        console.log('Loading teacher dashboard data...');
+        const data = await progressService.getTeacherDashboardData();
+        console.log('Loaded dashboard data:', data);
+        
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Error loading dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadDashboardData();
+  }, [navigate]);
 
-  // Sample student data
-  const students = [
-    {
-      id: 1,
-      name: "Emma Wilson",
-      avatar: "👧",
-      rank: "Apprentice Wizard",
-      level: 4,
-      progress: 75,
-      lastActive: "2 hours ago",
-      completedLevels: 3,
-      totalStars: 8,
-      currentWorld: "Forest Decisions",
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Alex Johnson",
-      avatar: "👦",
-      rank: "Novice Wizard",
-      level: 2,
-      progress: 45,
-      lastActive: "1 day ago",
-      completedLevels: 2,
-      totalStars: 5,
-      currentWorld: "Village Basics",
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Sofia Martinez",
-      avatar: "👧",
-      rank: "Master Wizard",
-      level: 8,
-      progress: 95,
-      lastActive: "30 min ago",
-      completedLevels: 8,
-      totalStars: 22,
-      currentWorld: "Mountain Challenges",
-      status: "active"
-    },
-    {
-      id: 4,
-      name: "James Chen",
-      avatar: "👦",
-      rank: "Apprentice Wizard",
-      level: 3,
-      progress: 60,
-      lastActive: "3 days ago",
-      completedLevels: 3,
-      totalStars: 7,
-      currentWorld: "Village Basics",
-      status: "inactive"
-    },
-    {
-      id: 5,
-      name: "Maya Patel",
-      avatar: "👧",
-      rank: "Novice Wizard",
-      level: 1,
-      progress: 25,
-      lastActive: "5 hours ago",
-      completedLevels: 1,
-      totalStars: 3,
-      currentWorld: "Village Basics",
-      status: "active"
+  // Load parents for communication
+  useEffect(() => {
+    const loadParents = async () => {
+      if (activeTab === 'parent-communication' && user) {
+        try {
+          const parentsList = await progressService.getAllParents();
+          setParents(parentsList);
+        } catch (err) {
+          console.error('Error loading parents:', err);
+        }
+      }
+    };
+
+    loadParents();
+  }, [activeTab, user]);
+
+  // Load messages when parent is selected
+  useEffect(() => {
+    let unsubscribe;
+    
+    if (selectedParent && user) {
+      // Subscribe to real-time messages
+      unsubscribe = progressService.subscribeToMessages(
+        user.email,
+        selectedParent.email,
+        (messages) => {
+          setMessages(messages);
+          // Mark messages as read
+          progressService.markMessagesAsRead(user.email, selectedParent.email);
+        }
+      );
     }
-  ];
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [selectedParent, user]);
 
-  const classStats = {
-    totalStudents: students.length,
-    activeStudents: students.filter(s => s.status === 'active').length,
-    averageProgress: Math.round(students.reduce((acc, s) => acc + s.progress, 0) / students.length),
-    totalLevelsCompleted: students.reduce((acc, s) => acc + s.completedLevels, 0),
-    totalStarsEarned: students.reduce((acc, s) => acc + s.totalStars, 0),
-    topPerformer: students.reduce((prev, current) => (prev.totalStars > current.totalStars) ? prev : current)
+  // Handle logout
+  const handleLogout = () => {
+    try {
+      // Clear all session data
+      sessionStorage.clear();
+      
+      // Reset local state
+      setUser(null);
+      setDashboardData(null);
+      setParents([]);
+      setSelectedParent(null);
+      setMessages([]);
+      setActiveTab('dashboard');
+      
+      // Navigate to login
+      navigate('/login', { replace: true });
+      
+      console.log('Teacher logged out successfully');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still navigate to login even if there's an error
+      navigate('/login', { replace: true });
+    }
   };
 
-  const recentActivity = [
-    { student: "Sofia Martinez", action: "Completed Dragon Battle", time: "30 min ago", type: "completion" },
-    { student: "Emma Wilson", action: "Earned Weather Path Master badge", time: "2 hours ago", type: "achievement" },
-    { student: "Maya Patel", action: "Started Village Basics", time: "5 hours ago", type: "start" },
-    { student: "Alex Johnson", action: "Completed Message Delivery", time: "1 day ago", type: "completion" }
-  ];
-
-  const worldProgress = [
-    { 
-      name: "Village Basics", 
-      icon: "🏘️", 
-      color: "from-green-400 to-emerald-600",
-      studentsCompleted: 2,
-      studentsInProgress: 3,
-      averageStars: 2.4
-    },
-    { 
-      name: "Forest Decisions", 
-      icon: "🌲", 
-      color: "from-emerald-500 to-teal-700",
-      studentsCompleted: 1,
-      studentsInProgress: 1,
-      averageStars: 3.0
-    },
-    { 
-      name: "Mountain Challenges", 
-      icon: "⛰️", 
-      color: "from-blue-500 to-indigo-600",
-      studentsCompleted: 1,
-      studentsInProgress: 0,
-      averageStars: 2.8
+  // Handle refresh
+  const handleRefresh = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      console.log('Refreshing teacher dashboard data...');
+      const data = await progressService.getTeacherDashboardData();
+      console.log('Refreshed dashboard data:', data);
+      
+      setDashboardData(data);
+    } catch (err) {
+      console.error('Error refreshing dashboard data:', err);
+      setError('Failed to refresh dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Send message to parent
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    
+    if (!newMessage.trim() || !selectedParent || !user) return;
+    
+    try {
+      setMessageLoading(true);
+      
+      await progressService.sendMessageToParent(
+        user.email,
+        selectedParent.email,
+        newMessage.trim()
+      );
+      
+      setNewMessage('');
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setError('Failed to send message. Please try again.');
+    } finally {
+      setMessageLoading(false);
+    }
+  };
+
+  // Format message time
+  const formatMessageTime = (timestamp) => {
+    const now = new Date();
+    const messageTime = new Date(timestamp);
+    const diffMs = now - messageTime;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    return messageTime.toLocaleDateString();
+  };
+
+  // Get data with fallbacks
+  const students = dashboardData?.students || [];
+  const classStats = dashboardData?.classStats || {
+    totalStudents: 0,
+    activeStudents: 0,
+    averageProgress: 0,
+    totalLevelsCompleted: 0,
+    totalStarsEarned: 0,
+    topPerformer: null
+  };
+  const recentActivity = dashboardData?.recentActivity || [];
+  const worldProgress = dashboardData?.worldProgress || [];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-white text-xl">Loading Teacher Dashboard...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 text-xl mb-4">⚠️ {error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
@@ -175,14 +275,14 @@ const TeacherDashboardPage = () => {
           </div>
 
           {/* User Profile */}
-          {isSidebarOpen && (
+          {isSidebarOpen && user && (
             <div className="p-4 border-b border-white/10">
               <div className="flex items-center space-x-3">
                 <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold">👩‍🏫</span>
                 </div>
                 <div>
-                  <div className="text-white font-medium">Ms. Rodriguez</div>
+                  <div className="text-white font-medium">{user.username || 'Teacher'}</div>
                   <div className="text-blue-200 text-sm">Master Teacher</div>
                 </div>
               </div>
@@ -211,35 +311,17 @@ const TeacherDashboardPage = () => {
               );
             })}
 
-            {/* Settings Submenu */}
-            {activeTab === 'settings' && isSidebarOpen && (
-              <div className="ml-4 space-y-1 border-l-2 border-purple-400 pl-4">
-                {settingsSubItems.map((subItem) => {
-                  const SubIcon = subItem.icon;
-                  return (
-                    <Link
-                      key={subItem.id}
-                      to={subItem.path}
-                      className="flex items-center space-x-3 px-3 py-2 text-blue-200 hover:text-white transition-colors"
-                    >
-                      <SubIcon className="w-4 h-4" />
-                      <span className="text-sm">{subItem.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
           </nav>
 
           {/* Logout */}
           <div className="p-4 border-t border-white/10">
-            <Link
-              to="/logout"
+            <button
+              onClick={handleLogout}
               className="w-full flex items-center space-x-3 px-4 py-3 text-red-300 hover:bg-red-500/20 rounded-xl transition-all duration-300"
             >
               <LogOut className="w-5 h-5" />
               {isSidebarOpen && <span className="font-medium">Logout</span>}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -254,6 +336,14 @@ const TeacherDashboardPage = () => {
               <p className="text-blue-200 mt-1">Guide your young wizards through their coding journey</p>
             </div>
             <div className="flex items-center space-x-4">
+              <button 
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
               <div className="bg-gradient-to-r from-green-400 to-emerald-500 px-4 py-2 rounded-xl">
                 <span className="text-white font-bold flex items-center space-x-1">
                   <Users className="w-4 h-4" />
@@ -367,27 +457,38 @@ const TeacherDashboardPage = () => {
                 <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-bold text-white">Student Progress</h3>
-                    <Link to="/analytics" className="text-blue-300 hover:text-white flex items-center space-x-1 text-sm">
+                    <button 
+                      onClick={() => setActiveTab('analytics')}
+                      className="text-blue-300 hover:text-white flex items-center space-x-1 text-sm"
+                    >
                       <span>View All</span>
                       <ChevronRight className="w-4 h-4" />
-                    </Link>
+                    </button>
                   </div>
                   <div className="space-y-4">
-                    {students.slice(0, 4).map((student) => (
-                      <div key={student.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                        <div className="flex items-center space-x-3">
-                          <div className="text-2xl">{student.avatar}</div>
-                          <div>
-                            <div className="text-white font-medium">{student.name}</div>
-                            <div className="text-blue-200 text-sm">{student.currentWorld}</div>
+                    {students.length > 0 ? (
+                      students.slice(0, 4).map((student) => (
+                        <div key={student.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <div className="text-2xl">{student.avatar}</div>
+                            <div>
+                              <div className="text-white font-medium">{student.name}</div>
+                              <div className="text-blue-200 text-sm">{student.currentWorld}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-white font-bold">Level {student.level}</div>
+                            <div className="text-blue-200 text-sm">{student.progress}% complete</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-white font-bold">Level {student.level}</div>
-                          <div className="text-blue-200 text-sm">{student.progress}% complete</div>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="text-4xl mb-4">👨‍🎓</div>
+                        <div className="text-white font-medium mb-2">No Students Yet</div>
+                        <div className="text-blue-200 text-sm">Students will appear here once they register and start playing.</div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 
@@ -395,48 +496,64 @@ const TeacherDashboardPage = () => {
                 <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                   <h3 className="text-xl font-bold text-white mb-6">Recent Activity</h3>
                   <div className="space-y-4">
-                    {recentActivity.map((activity, index) => (
-                      <div key={index} className="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                          activity.type === 'completion' ? 'bg-green-500' :
-                          activity.type === 'achievement' ? 'bg-yellow-500' : 'bg-blue-500'
-                        }`}>
-                          {activity.type === 'completion' ? '✓' : 
-                           activity.type === 'achievement' ? '🏆' : '▶'}
+                    {recentActivity.length > 0 ? (
+                      recentActivity.map((activity, index) => (
+                        <div key={index} className="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                            activity.type === 'completion' ? 'bg-green-500' :
+                            activity.type === 'achievement' ? 'bg-yellow-500' : 'bg-blue-500'
+                          }`}>
+                            {activity.type === 'completion' ? '✓' : 
+                             activity.type === 'achievement' ? '🏆' : '▶'}
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-white font-medium">{activity.student}</div>
+                            <div className="text-blue-200 text-sm">{activity.action}</div>
+                            <div className="text-blue-300 text-xs">{activity.time}</div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="text-white font-medium">{activity.student}</div>
-                          <div className="text-blue-200 text-sm">{activity.action}</div>
-                          <div className="text-blue-300 text-xs">{activity.time}</div>
-                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="text-4xl mb-4">📊</div>
+                        <div className="text-white font-medium mb-2">No Recent Activity</div>
+                        <div className="text-blue-200 text-sm">Student activity will appear here as they complete levels.</div>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Top Performer Highlight */}
-              <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-2">🏆 Top Performer</h3>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-4xl">{classStats.topPerformer.avatar}</div>
-                      <div>
-                        <div className="text-xl font-bold">{classStats.topPerformer.name}</div>
-                        <div className="text-purple-100">{classStats.topPerformer.rank}</div>
-                        <div className="text-purple-200 text-sm">
-                          Level {classStats.topPerformer.level} • {classStats.topPerformer.totalStars} stars earned
+              {classStats.topPerformer ? (
+                <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-2xl font-bold mb-2">🏆 Top Performer</h3>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-4xl">{classStats.topPerformer.avatar}</div>
+                        <div>
+                          <div className="text-xl font-bold">{classStats.topPerformer.name}</div>
+                          <div className="text-purple-100">{classStats.topPerformer.rank}</div>
+                          <div className="text-purple-200 text-sm">
+                            Level {classStats.topPerformer.level} • {classStats.topPerformer.totalStars} stars earned
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold">{classStats.topPerformer.progress}%</div>
-                    <div className="text-purple-200">Progress</div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold">{classStats.topPerformer.progress}%</div>
+                      <div className="text-purple-200">Progress</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-3xl p-8 text-white text-center">
+                  <h3 className="text-2xl font-bold mb-2">🏆 Top Performer</h3>
+                  <p className="text-gray-300">No students have started their coding journey yet.</p>
+                  <p className="text-gray-400 text-sm mt-2">Encourage your students to begin playing!</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -464,43 +581,53 @@ const TeacherDashboardPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {students.map((student) => (
-                        <tr key={student.id} className="border-t border-white/10 hover:bg-white/5">
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <span className="text-2xl">{student.avatar}</span>
-                              <span className="text-white font-medium">{student.name}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-blue-200">{student.rank}</td>
-                          <td className="p-4 text-white font-bold">{student.level}</td>
-                          <td className="p-4">
-                            <div className="w-24 bg-white/20 rounded-full h-2">
-                              <div 
-                                className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full"
-                                style={{ width: `${student.progress}%` }}
-                              ></div>
-                            </div>
-                            <span className="text-blue-200 text-sm">{student.progress}%</span>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center space-x-1">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="text-white font-bold">{student.totalStars}</span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-blue-200 text-sm">{student.lastActive}</td>
-                          <td className="p-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              student.status === 'active' 
-                                ? 'bg-green-500/20 text-green-300' 
-                                : 'bg-red-500/20 text-red-300'
-                            }`}>
-                              {student.status}
-                            </span>
+                      {students.length > 0 ? (
+                        students.map((student) => (
+                          <tr key={student.id} className="border-t border-white/10 hover:bg-white/5">
+                            <td className="p-4">
+                              <div className="flex items-center space-x-3">
+                                <span className="text-2xl">{student.avatar}</span>
+                                <span className="text-white font-medium">{student.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-blue-200">{student.rank}</td>
+                            <td className="p-4 text-white font-bold">{student.level}</td>
+                            <td className="p-4">
+                              <div className="w-24 bg-white/20 rounded-full h-2">
+                                <div 
+                                  className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full"
+                                  style={{ width: `${student.progress}%` }}
+                                ></div>
+                              </div>
+                              <span className="text-blue-200 text-sm">{student.progress}%</span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center space-x-1">
+                                <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                                <span className="text-white font-bold">{student.totalStars}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-blue-200 text-sm">{student.lastActive}</td>
+                            <td className="p-4">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                student.status === 'active' 
+                                  ? 'bg-green-500/20 text-green-300' 
+                                  : 'bg-red-500/20 text-red-300'
+                              }`}>
+                                {student.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="7" className="p-8 text-center">
+                            <div className="text-4xl mb-4">👨‍🎓</div>
+                            <div className="text-white font-medium mb-2">No Students Registered</div>
+                            <div className="text-blue-200 text-sm">Students will appear here once they register for your class.</div>
                           </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -525,6 +652,144 @@ const TeacherDashboardPage = () => {
                   <div className="text-white font-bold">Class Analytics</div>
                   <div className="text-blue-200 text-sm">Overall class performance</div>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Parent Communication Tab */}
+          {activeTab === 'parent-communication' && (
+            <div className="h-[calc(100vh-200px)]">
+              <div className="flex h-full bg-white/5 backdrop-blur-sm rounded-3xl border border-white/20 overflow-hidden">
+                {/* Parents List */}
+                <div className="w-1/3 border-r border-white/10 flex flex-col">
+                  <div className="p-4 border-b border-white/10">
+                    <h3 className="text-xl font-bold text-white mb-2">Parent Communication</h3>
+                    <p className="text-blue-200 text-sm">Connect with parents of your students</p>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto">
+                    {parents.length > 0 ? (
+                      parents.map((parent) => (
+                        <div
+                          key={parent.id}
+                          onClick={() => setSelectedParent(parent)}
+                          className={`p-4 border-b border-white/5 cursor-pointer transition-colors ${
+                            selectedParent?.id === parent.id 
+                              ? 'bg-purple-500/20 border-purple-500/30' 
+                              : 'hover:bg-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-white font-medium">{parent.name}</div>
+                              <div className="text-blue-200 text-sm">{parent.email}</div>
+                              <div className="text-blue-300 text-xs">
+                                {parent.students.length} student{parent.students.length !== 1 ? 's' : ''}: {parent.students.map(s => s.name).join(', ')}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center">
+                        <div className="text-4xl mb-4">👨‍👩‍👧‍👦</div>
+                        <div className="text-white font-medium mb-2">No Parents Available</div>
+                        <div className="text-blue-200 text-sm">Parents will appear here when students add their parent email in profile settings.</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chat Area */}
+                <div className="flex-1 flex flex-col">
+                  {selectedParent ? (
+                    <>
+                      {/* Chat Header */}
+                      <div className="p-4 border-b border-white/10 bg-white/5">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <div className="text-white font-medium">{selectedParent.name}</div>
+                            <div className="text-blue-200 text-sm">
+                              Parent of: {selectedParent.students.map(s => s.name).join(', ')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Messages */}
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {messages.length > 0 ? (
+                          messages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={`flex ${message.senderRole === 'teacher' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                                  message.senderRole === 'teacher'
+                                    ? 'bg-purple-500 text-white'
+                                    : 'bg-white/10 text-white'
+                                }`}
+                              >
+                                <div className="text-sm">{message.message}</div>
+                                <div className={`text-xs mt-1 ${
+                                  message.senderRole === 'teacher' ? 'text-purple-200' : 'text-blue-300'
+                                }`}>
+                                  {formatMessageTime(message.timestamp)}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8">
+                            <div className="text-4xl mb-4">💬</div>
+                            <div className="text-white font-medium mb-2">No messages yet</div>
+                            <div className="text-blue-200 text-sm">Start a conversation with {selectedParent.name}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Message Input */}
+                      <div className="p-4 border-t border-white/10 bg-white/5">
+                        <form onSubmit={handleSendMessage} className="flex space-x-3">
+                          <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Type your message..."
+                            className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            disabled={messageLoading}
+                          />
+                          <button
+                            type="submit"
+                            disabled={messageLoading || !newMessage.trim()}
+                            className="px-6 py-3 bg-purple-500 hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center space-x-2"
+                          >
+                            {messageLoading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <Send className="w-5 h-5" />
+                            )}
+                          </button>
+                        </form>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-6xl mb-4">💬</div>
+                        <div className="text-white font-medium mb-2">Select a Parent</div>
+                        <div className="text-blue-200 text-sm">Choose a parent from the list to start messaging</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

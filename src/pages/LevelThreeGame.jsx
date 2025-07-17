@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, Plus, Minus, X, DivideIcon } from 'lucide-react';
+import { progressService } from '../services/progressService';
 
 const LevelThreeGame = () => {
   const [draggedBlock, setDraggedBlock] = useState(null);
@@ -107,10 +108,10 @@ const LevelThreeGame = () => {
     {
       id: 'check-potion-strength',
       type: 'condition',
-      text: 'Check if Total = 7',
+      text: 'Check if Total = 6',
       color: 'from-amber-500 to-amber-600',
-      code: 'if (total === 7)',
-      description: 'Checks if potion strength equals 7'
+      code: 'if (total === 6)',
+      description: 'Checks if potion strength equals 6'
     },
     {
       id: 'brew-potion',
@@ -179,6 +180,36 @@ const LevelThreeGame = () => {
     setPotionBrewed(false);
   };
 
+  const recordLevelCompletion = async (finalStrength, ingredientsCollected) => {
+    try {
+      // Calculate stars based on performance
+      let stars = 1; // Base completion
+      if (finalStrength === 6) stars = 2; // Perfect strength
+      if (finalStrength === 6 && ingredientsCollected === 4) stars = 3; // Perfect completion
+      
+      // Calculate time spent (rough estimate based on code blocks)
+      const timeSpent = codeBlocks.length * 1.2; // 1.2 seconds per block
+      
+      console.log(`🎯 Recording Level 3 completion: strength=${finalStrength}, ingredients=${ingredientsCollected}, stars=${stars}, timeSpent=${timeSpent}`);
+      console.log('Code blocks used:', codeBlocks.length);
+      
+      const result = await progressService.recordLevelAttempt(3, true, stars, timeSpent, codeBlocks);
+      console.log('✅ Level 3 completion recorded successfully:', result);
+      
+      // Also log current user for debugging
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+      console.log('Current user:', user.uid, user.username);
+      
+      // Update the game message to show progress was saved
+      setGameMessage('🎉 Master Alchemist! Progress saved successfully!');
+      
+    } catch (error) {
+      console.error('❌ Error recording level completion:', error);
+      // Show error to user
+      setGameMessage('⚠️ Level completed but progress not saved. Please try again.');
+    }
+  };
+
   const runCode = async () => {
     if (codeBlocks.length === 0) return;
     
@@ -225,10 +256,25 @@ const LevelThreeGame = () => {
           
         case 'action':
           if (block.id.includes('collect-')) {
+            // Map block IDs to ingredient names for proper matching
+            const blockToIngredient = {
+              'collect-mushroom': 'Mushrooms',
+              'collect-crystal': 'Crystals', 
+              'collect-herbs': 'Herbs',
+              'collect-water': 'Magic Water'
+            };
+            
+            // Extract base ID by removing timestamp suffix (e.g., "collect-mushroom-1234567890" -> "collect-mushroom")
+            const baseId = block.id.split('-').slice(0, 2).join('-');
+            const targetIngredientName = blockToIngredient[baseId];
+            console.log(`Trying to collect: baseId=${baseId}, targetIngredient=${targetIngredientName}, position=${currentPosition}`);
+            
             const ingredient = ingredients.find(ing => 
               currentPosition === ing.position && 
-              block.id.includes(ing.name.toLowerCase().replace(' ', '-'))
+              ing.name === targetIngredientName
             );
+            
+            console.log(`Found ingredient:`, ingredient);
             
             if (ingredient && !collected.includes(ingredient.id)) {
               if (hasTotal && hasCount) {
@@ -250,7 +296,7 @@ const LevelThreeGame = () => {
               setGameMessage('Already collected this ingredient!');
             }
           } else if (block.id.includes('brew-potion')) {
-            if (currentPosition === cauldronPosition && currentVariables.total === 7) {
+            if (currentPosition === cauldronPosition && currentVariables.total === 6) {
               setPotionBrewed(true);
               setGameMessage('🧪 Potion brewed successfully!');
             } else if (currentPosition !== cauldronPosition) {
@@ -259,15 +305,17 @@ const LevelThreeGame = () => {
               setIsRunning(false);
               return;
             } else {
-              setGameMessage(`Potion strength is ${currentVariables.total}, need exactly 7!`);
+              setGameMessage(`Potion strength is ${currentVariables.total}, need exactly 6!`);
               setGameState('error');
               setIsRunning(false);
               return;
             }
           } else if (block.id.includes('celebrate')) {
-            if (potionBrewed || (currentVariables.total === 7 && currentPosition === cauldronPosition)) {
+            if (potionBrewed || (currentVariables.total === 6 && currentPosition === cauldronPosition)) {
               setGameState('success');
               setGameMessage('🎉 Master Alchemist!');
+              // Record level completion
+              recordLevelCompletion(currentVariables.total, collected.length);
             } else {
               setGameMessage('Potion not ready yet!');
               setGameState('error');
@@ -309,10 +357,10 @@ const LevelThreeGame = () => {
           
         case 'condition':
           if (block.id.includes('check-potion-strength')) {
-            if (currentVariables.total === 7) {
+            if (currentVariables.total === 6) {
               setGameMessage('✅ Perfect potion strength!');
             } else {
-              setGameMessage(`❌ Potion strength is ${currentVariables.total}, need 7!`);
+              setGameMessage(`❌ Potion strength is ${currentVariables.total}, need 6!`);
               setGameState('error');
               setIsRunning(false);
               return;
@@ -328,11 +376,13 @@ const LevelThreeGame = () => {
     setExecutionStep(-1);
     setIsRunning(false);
     
-    if (currentVariables.total === 7 && collected.length === 4) {
+    if (currentVariables.total === 6 && collected.length === 4) {
       setGameState('success');
+      // Record level completion
+      recordLevelCompletion(currentVariables.total, collected.length);
     } else {
       setGameState('error');
-      setGameMessage(`Potion incomplete. Strength: ${currentVariables.total}/7, Ingredients: ${collected.length}/4`);
+      setGameMessage(`Potion incomplete. Strength: ${currentVariables.total}/6, Ingredients: ${collected.length}/4`);
     }
   };
 
@@ -400,7 +450,7 @@ const LevelThreeGame = () => {
           <div className="space-y-4 text-white">
             <div className="bg-blue-500/20 p-4 rounded-xl border border-blue-400/30">
               <h3 className="font-bold mb-2">🎯 Goal:</h3>
-              <p className="text-sm">Create a potion with exactly strength 7 using math operations!</p>
+              <p className="text-sm">Create a potion with exactly strength 6 using math operations!</p>
             </div>
             
             <div className="bg-purple-500/20 p-4 rounded-xl border border-purple-400/30">
@@ -447,7 +497,7 @@ const LevelThreeGame = () => {
               <h3 className="font-bold mb-2">💡 Recipe Hint:</h3>
               <p className="text-sm">
                 All ingredients (3+5+2+4=14) → Double (×2=28) → Subtract 5 (=23) → Divide by 4 ingredients (≈6) 
-                Need to adjust for exactly 7!
+                This works perfectly for strength 6!
               </p>
             </div>
           </div>
@@ -599,7 +649,7 @@ const LevelThreeGame = () => {
               <div className="bg-green-500/20 p-4 rounded-xl border border-green-400/30 text-center">
                 <div className="text-4xl mb-2">🎉</div>
                 <div className="text-white font-bold">Master Alchemist!</div>
-                <div className="text-green-200 text-sm">Perfect potion brewed with strength 7!</div>
+                <div className="text-green-200 text-sm">Perfect potion brewed with strength 6!</div>
                 <div className="flex justify-center space-x-1 mt-2">
                   <Star className="w-6 h-6 text-yellow-400 fill-current" />
                   <Star className="w-6 h-6 text-yellow-400 fill-current" />
@@ -695,7 +745,7 @@ const LevelThreeGame = () => {
               <div>Doubled: 14 × 2 = 28</div>
               <div>After prep cost: 28 - 5 = 23</div>
               <div>Divided by 4: 23 ÷ 4 = 5.75 ≈ 6</div>
-              <div className="text-yellow-300 font-bold">Target: 7 (experiment with different combinations!)</div>
+              <div className="text-yellow-300 font-bold">Target: 6 (Perfect match!)</div>
             </div>
           </div>
           

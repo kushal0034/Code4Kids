@@ -108,7 +108,40 @@ const StudentDashboard = () => {
         return;
       }
 
-      setUserData(user);
+      // Fetch the latest user data from database
+      const freshUserData = await progressService.getUserData(user.uid);
+      
+      if (freshUserData) {
+        // Merge with session data to keep auth info
+        const updatedUser = {
+          ...user,
+          ...freshUserData,
+          uid: user.uid, // Keep original UID
+          role: user.role // Keep original role
+        };
+        
+        setUserData(updatedUser);
+        
+        // Update session storage with fresh data
+        sessionStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        // Initialize profile data with fresh data
+        setProfileData({
+          username: updatedUser.username || '',
+          email: updatedUser.email || '',
+          parentName: updatedUser.parentName || '',
+          parentEmail: updatedUser.parentEmail || ''
+        });
+      } else {
+        // Fallback to session data if database fetch fails
+        setUserData(user);
+        setProfileData({
+          username: user.username || '',
+          email: user.email || '',
+          parentName: user.parentName || '',
+          parentEmail: user.parentEmail || ''
+        });
+      }
       
       const progress = await progressService.getDashboardData(user.uid);
       
@@ -117,14 +150,6 @@ const StudentDashboard = () => {
       console.log('Achievements in progress:', progress?.achievements);
       
       setProgressData(progress);
-      
-      // Initialize profile data
-      setProfileData({
-        username: user.username || '',
-        email: user.email || '',
-        parentName: user.parentName || '',
-        parentEmail: user.parentEmail || ''
-      });
       
     } catch (err) {
       console.error('Error loading user data:', err);
@@ -143,20 +168,19 @@ const StudentDashboard = () => {
     
     try {
       // Update user profile in Firebase
-      await progressService.updateUserProfile(userData.uid, {
+      const result = await progressService.updateUserProfile(userData.uid, {
         username: profileData.username,
         email: profileData.email,
         parentName: profileData.parentName,
         parentEmail: profileData.parentEmail
       });
       
-      // Update local user data
+      // Use the updated data from Firebase to ensure accuracy
       const updatedUserData = {
         ...userData,
-        username: profileData.username,
-        email: profileData.email,
-        parentName: profileData.parentName,
-        parentEmail: profileData.parentEmail
+        ...result.userData,
+        uid: userData.uid, // Keep the original UID
+        role: userData.role // Keep the original role
       };
       
       setUserData(updatedUserData);
