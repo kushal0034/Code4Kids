@@ -1,9 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Star, Lock, Play, ChevronRight, ArrowLeft, Home, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route, BrowserRouter } from 'react-router-dom';
+import { 
+  Star, 
+  Lock, 
+  Play, 
+  CheckCircle, 
+  ArrowLeft, 
+  Home, 
+  Trophy,
+  Clock,
+  Target,
+  Sparkles
+} from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '../pages/firebase';
+import { progressService } from '../services/progressService';
 
+// Worlds Page Component
 const WorldsPage = () => {
   const navigate = useNavigate();
   const [selectedWorld, setSelectedWorld] = useState(null);
@@ -48,9 +61,9 @@ const WorldsPage = () => {
       if (progressSnap.exists()) {
         setUserProgress(progressSnap.data());
       } else {
-        // If no progress exists, redirect to dashboard to initialize
-        navigate('/student-dashboard');
-        return;
+        // If no progress exists, initialize it
+        const initialProgress = await progressService.initializeUserProgress(user.uid);
+        setUserProgress(initialProgress);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -68,40 +81,55 @@ const WorldsPage = () => {
       {
         id: 1,
         name: worldsData.village.name,
-        concept: worldsData.village.concept,
+        concept: "Variables",
         icon: "🏘️",
         color: "from-green-400 to-emerald-600",
         shadowColor: "shadow-green-500/50",
         unlocked: worldsData.village.unlocked,
         progress: worldsData.village.progress,
         description: "Learn the fundamentals of coding through village adventures",
-        levels: Object.values(worldsData.village.levels),
+        levels: Object.entries(worldsData.village.levels).map(([key, level]) => ({
+          ...level,
+          id: parseInt(key.replace('level', '')),
+          name: level.name || `Level ${key.replace('level', '')}`,
+          unlocked: level.unlocked || (key === 'level1' && worldsData.village.unlocked)
+        })),
         completed: worldsData.village.progress === 100
       },
       {
         id: 2,
         name: worldsData.forest.name,
-        concept: worldsData.forest.concept,
+        concept: "If/Else",
         icon: "🌲",
         color: "from-emerald-500 to-teal-700",
         shadowColor: "shadow-emerald-500/50",
         unlocked: worldsData.forest.unlocked,
         progress: worldsData.forest.progress,
         description: "Master conditional logic through mystical forest challenges",
-        levels: Object.values(worldsData.forest.levels),
+        levels: Object.entries(worldsData.forest.levels).map(([key, level]) => ({
+          ...level,
+          id: parseInt(key.replace('level', '')),
+          name: level.name || `Level ${key.replace('level', '')}`,
+          unlocked: level.unlocked || false
+        })),
         completed: worldsData.forest.progress === 100
       },
       {
         id: 3,
         name: worldsData.mountain.name,
-        concept: worldsData.mountain.concept,
+        concept: "Loops",
         icon: "⛰️",
         color: "from-blue-500 to-indigo-600",
         shadowColor: "shadow-blue-500/50",
         unlocked: worldsData.mountain.unlocked,
         progress: worldsData.mountain.progress,
         description: "Conquer repetition and loops in the magical mountains",
-        levels: Object.values(worldsData.mountain.levels),
+        levels: Object.entries(worldsData.mountain.levels).map(([key, level]) => ({
+          ...level,
+          id: parseInt(key.replace('level', '')),
+          name: level.name || `Level ${key.replace('level', '')}`,
+          unlocked: level.unlocked || false
+        })),
         completed: worldsData.mountain.progress === 100
       }
     ];
@@ -125,106 +153,58 @@ const WorldsPage = () => {
     }
   };
 
-  const Link = ({ to, children, className }) => (
-    <button onClick={() => navigate(to)} className={className}>
-      {children}
-    </button>
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-white text-xl">Loading magical worlds...</div>
+        <div className="text-white text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-xl">Loading magical worlds...</p>
         </div>
       </div>
     );
   }
 
   const worlds = getWorldsFromProgress();
-  const totalLevels = worlds.reduce((sum, world) => sum + world.levels.length, 0);
-  const completedLevels = worlds.reduce((sum, world) => sum + world.levels.filter(l => l.completed).length, 0);
-  const totalStars = worlds.reduce((sum, world) => sum + world.levels.reduce((starSum, l) => starSum + l.stars, 0), 0);
+  const completedLevels = worlds.reduce((acc, world) => acc + world.levels.filter(l => l.completed).length, 0);
+  const totalLevels = worlds.reduce((acc, world) => acc + world.levels.length, 0);
+  const totalStars = worlds.reduce((acc, world) => acc + world.levels.reduce((starAcc, level) => starAcc + level.stars, 0), 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 z-0">
-        {/* Stars */}
-        {[...Array(50)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 2}s`
-            }}
-          />
-        ))}
-        
-        {/* Floating Particles */}
-        {particles.map(particle => (
-          <div
-            key={particle.id}
-            className="absolute w-2 h-2 bg-yellow-400 rounded-full opacity-60"
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              animation: `float ${particle.duration}s ease-in-out infinite`,
-              animationDelay: `${particle.delay}s`
-            }}
-          />
-        ))}
-        
-        {/* Floating Clouds */}
-        <div className="absolute top-20 left-10 w-32 h-16 bg-white/10 rounded-full animate-bounce opacity-30" style={{ animationDuration: '6s' }} />
-        <div className="absolute top-40 right-20 w-24 h-12 bg-white/10 rounded-full animate-bounce opacity-20" style={{ animationDuration: '8s', animationDelay: '2s' }} />
-        <div className="absolute bottom-40 left-1/4 w-20 h-10 bg-white/10 rounded-full animate-bounce opacity-25" style={{ animationDuration: '7s', animationDelay: '4s' }} />
-      </div>
+      {/* Floating Particles */}
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            animationDelay: `${particle.delay}s`,
+            animationDuration: `${particle.duration}s`
+          }}
+        />
+      ))}
 
       {/* Header */}
-      <div className="relative z-10 bg-black/20 backdrop-blur-sm border-b border-white/20 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button onClick={() => navigate('/student-dashboard')} className="flex items-center space-x-2 text-white hover:text-yellow-300 transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back to Dashboard</span>
-            </button>
-            <div className="h-6 w-px bg-white/30" />
-            <div className="flex items-center space-x-2">
-              <Sparkles className="w-6 h-6 text-yellow-400" />
-              <span className="text-white font-bold">Magical Worlds</span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            {userData && (
-              <div className="text-white">
-                <span className="font-medium">Welcome, {userData.username}!</span>
-              </div>
-            )}
-            <button onClick={() => navigate('/student-dashboard')} className="text-white hover:text-yellow-300 transition-colors">
-              <Home className="w-5 h-5" />
-            </button>
-          </div>
+      <div className="relative z-10 text-center pt-12 pb-8">
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <button
+            onClick={() => navigate('/student-dashboard')}
+            className="text-white/80 hover:text-white transition-colors"
+          >
+            <Home className="w-6 h-6" />
+          </button>
+          <Sparkles className="w-8 h-8 text-yellow-400" />
+          <h1 className="text-4xl font-bold text-white">Choose Your Adventure</h1>
+          <Sparkles className="w-8 h-8 text-yellow-400" />
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10 text-center py-12 px-6">
-        <h1 className="text-5xl md:text-7xl font-bold mb-6">
-          <span className="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
-            Magical Worlds
-          </span>
-        </h1>
-        <p className="text-xl text-blue-200 max-w-3xl mx-auto mb-8">
-          Embark on epic coding adventures across three enchanted realms. Master programming concepts through magical quests!
+        
+        <p className="text-blue-200 text-lg max-w-2xl mx-auto px-4">
+          Master programming concepts through magical quests!
         </p>
         
         {/* Progress Overview */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-6 max-w-4xl mx-auto mb-12">
+        <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-6 max-w-4xl mx-auto mb-12 mt-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             <div>
               <div className="text-3xl font-bold text-green-400">{completedLevels}</div>
@@ -259,163 +239,124 @@ const WorldsPage = () => {
             {/* World Island */}
             <div 
               className={`relative w-80 h-96 cursor-pointer transition-all duration-500 ${
-                world.unlocked ? 'hover:scale-105 hover:-translate-y-4' : 'opacity-60'
+                world.unlocked 
+                  ? 'hover:scale-105 hover:shadow-2xl' 
+                  : 'opacity-70 cursor-not-allowed'
               }`}
-              style={{
-                animation: `worldFloat 6s ease-in-out infinite`,
-                animationDelay: `${index * -2}s`
-              }}
               onClick={() => world.unlocked && setSelectedWorld(world)}
             >
-              {/* World Base/Ground */}
-              <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-72 h-32 bg-gradient-to-br ${world.color} rounded-t-full shadow-2xl ${world.shadowColor}`}>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-t-full" />
-                
-                {/* World Surface Details */}
-                <div className="absolute inset-0 overflow-hidden rounded-t-full">
-                  {world.id === 1 && (
-                    <>
-                      <div className="absolute bottom-4 left-8 w-6 h-8 bg-amber-600 rounded-sm transform rotate-12" />
-                      <div className="absolute bottom-6 right-12 w-4 h-6 bg-amber-700 rounded-sm" />
-                      <div className="absolute bottom-2 left-1/2 w-8 h-3 bg-red-500 rounded-full" />
-                    </>
-                  )}
-                  {world.id === 2 && (
-                    <>
-                      <div className="absolute bottom-8 left-12 w-3 h-12 bg-amber-800 rounded-sm" />
-                      <div className="absolute bottom-6 right-16 w-2 h-8 bg-amber-900 rounded-sm" />
-                      <div className="absolute bottom-4 left-1/3 w-4 h-10 bg-green-800 rounded-sm" />
-                    </>
-                  )}
-                  {world.id === 3 && (
-                    <>
-                      <div className="absolute bottom-12 left-1/4 w-8 h-8 bg-gray-600 rounded" />
-                      <div className="absolute bottom-8 right-1/4 w-6 h-12 bg-gray-700 rounded-t-lg" />
-                      <div className="absolute bottom-4 left-1/2 w-4 h-6 bg-gray-500 rounded" />
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* World Content */}
-              <div className="absolute top-8 left-1/2 transform -translate-x-1/2 text-center w-full">
-                {/* Lock Icon for Locked Worlds */}
+              {/* World Card */}
+              <div className={`h-full bg-gradient-to-br ${world.color} rounded-3xl shadow-2xl ${world.shadowColor} border border-white/20 overflow-hidden`}>
+                {/* Lock Overlay */}
                 {!world.unlocked && (
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center z-20">
-                    <Lock className="w-4 h-4 text-white" />
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-3xl flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <Lock className="w-12 h-12 text-white mb-4 mx-auto" />
+                      <div className="text-white font-bold text-lg">Locked</div>
+                      <div className="text-white/80 text-sm">Complete previous world</div>
+                    </div>
                   </div>
                 )}
-                
-                {/* Completion Crown for Completed Worlds */}
-                {world.completed && (
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center z-20 animate-pulse">
-                    <span className="text-white text-xs">👑</span>
+
+                {/* World Content */}
+                <div className="p-6 h-full flex flex-col">
+                  {/* World Header */}
+                  <div className="text-center mb-4">
+                    <div className="text-4xl mb-2">{world.icon}</div>
+                    <h3 className="text-xl font-bold text-white">{world.name}</h3>
+                    <div className="text-blue-200 text-sm">{world.concept}</div>
                   </div>
-                )}
-                
-                {/* World Icon */}
-                <div className={`text-8xl mb-4 filter drop-shadow-lg ${world.unlocked ? 'animate-bounce' : ''}`} style={{ animationDuration: '3s' }}>
-                  {world.icon}
-                </div>
-                
-                {/* World Title */}
-                <h2 className="text-2xl font-bold text-white mb-2 drop-shadow-lg">
-                  {world.name}
-                </h2>
-                <p className="text-blue-200 text-sm mb-4 drop-shadow">
-                  {world.concept}
-                </p>
-                
-                {/* Progress Bar */}
-                {world.unlocked && (
-                  <div className="w-48 mx-auto mb-4">
-                    <div className="flex justify-between text-xs text-white mb-1">
-                      <span>Progress</span>
-                      <span>{world.progress}%</span>
+
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-white text-sm font-medium">Progress</span>
+                      <span className="text-white text-sm">{world.progress}%</span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
                       <div 
-                        className={`h-2 rounded-full transition-all duration-1000 ${
+                        className={`h-2 rounded-full transition-all duration-300 ${
                           world.completed 
                             ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
-                            : 'bg-gradient-to-r from-yellow-400 to-orange-500'
+                            : 'bg-gradient-to-r from-blue-400 to-purple-500'
                         }`}
                         style={{ width: `${world.progress}%` }}
                       />
                     </div>
-                    {world.completed && (
-                      <div className="text-yellow-300 text-xs mt-1 font-bold">✨ World Complete! ✨</div>
-                    )}
                   </div>
-                )}
-                
-                {/* Levels Preview */}
-                <div className="space-y-2">
-                  {world.levels.map((level) => (
-                    <div 
-                      key={level.id}
-                      className={`relative group/level bg-white/10 backdrop-blur-sm rounded-lg p-2 mx-4 border transition-all duration-300 ${
-                        level.unlocked 
-                          ? 'border-white/30 hover:bg-white/20 cursor-pointer' 
-                          : 'border-white/10 opacity-50'
-                      } ${level.completed ? 'bg-green-500/20 border-green-400/50' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLevelClick(level.id, level.unlocked);
-                      }}
-                    >
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2">
-                          {!level.unlocked && <Lock className="w-3 h-3 text-gray-400" />}
-                          {level.completed && <CheckCircle className="w-3 h-3 text-green-400" />}
-                          <span className={`font-medium ${level.completed ? 'text-green-200' : 'text-white'}`}>
-                            {level.name}
-                          </span>
-                          {level.unlocked && !level.completed && (
-                            <Play className="w-3 h-3 text-green-300 opacity-0 group-hover/level:opacity-100 transition-opacity" />
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          {[...Array(3)].map((_, i) => (
-                            <Star 
-                              key={i} 
-                              className={`w-3 h-3 ${
-                                i < level.stars 
-                                  ? 'text-yellow-400 fill-current' 
-                                  : 'text-white/30'
-                              }`}
-                            />
-                          ))}
-                        </div>
+
+                  {/* Completion Badge */}
+                  {world.completed && (
+                    <div className="flex items-center justify-center mb-4">
+                      <div className="bg-yellow-400/20 border border-yellow-400/50 rounded-xl px-3 py-1 flex items-center space-x-2">
+                        <CheckCircle className="w-4 h-4 text-yellow-400" />
+                        <span className="text-yellow-200 text-sm font-medium">Completed</span>
+                        <div className="animate-pulse">✨</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-                
-                {/* Enter World Button */}
-                {world.unlocked && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEnterWorld(world.id);
-                    }}
-                    className={`mt-4 px-6 py-2 text-white font-bold rounded-xl hover:scale-105 transition-transform shadow-lg flex items-center space-x-2 mx-auto ${
-                      world.completed 
-                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' 
-                        : 'bg-gradient-to-r from-purple-500 to-pink-500'
-                    }`}
-                  >
-                    <Play className="w-4 h-4" />
-                    <span>{world.completed ? 'Replay World' : 'Enter World'}</span>
-                  </button>
-                )}
-                
-                {/* Locked World Message */}
-                {!world.unlocked && (
-                  <div className="mt-4 px-4 py-2 bg-red-500/20 text-red-200 rounded-xl text-sm">
-                    Complete previous world to unlock
+                  )}
+                  
+                  {/* Levels Preview */}
+                  <div className="space-y-2 flex-1">
+                    {world.levels.map((level) => (
+                      <div 
+                        key={level.id}
+                        className={`relative group/level bg-white/10 backdrop-blur-sm rounded-lg p-2 mx-4 border transition-all duration-300 ${
+                          level.unlocked 
+                            ? 'border-white/30 hover:bg-white/20 cursor-pointer' 
+                            : 'border-white/10 opacity-50'
+                        } ${level.completed ? 'bg-green-500/20 border-green-400/50' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLevelClick(level.id, level.unlocked);
+                        }}
+                      >
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center space-x-2">
+                            {!level.unlocked && <Lock className="w-3 h-3 text-gray-400" />}
+                            {level.completed && <CheckCircle className="w-3 h-3 text-green-400" />}
+                            <span className={`font-medium ${level.completed ? 'text-green-200' : 'text-white'}`}>
+                              {level.name}
+                            </span>
+                            {level.unlocked && !level.completed && (
+                              <Play className="w-3 h-3 text-green-300 opacity-0 group-hover/level:opacity-100 transition-opacity" />
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            {[...Array(3)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                className={`w-3 h-3 ${
+                                  i < level.stars 
+                                    ? 'text-yellow-400 fill-current' 
+                                    : 'text-white/30'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
+                  
+                  {/* Enter World Button */}
+                  {world.unlocked && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEnterWorld(world.id);
+                      }}
+                      className={`mt-4 px-6 py-2 text-white font-bold rounded-xl hover:scale-105 transition-transform shadow-lg flex items-center space-x-2 mx-auto ${
+                        world.completed 
+                          ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
+                          : 'bg-gradient-to-r from-blue-400 to-purple-500'
+                      }`}
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>Enter World</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -424,41 +365,34 @@ const WorldsPage = () => {
 
       {/* World Detail Modal */}
       {selectedWorld && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 max-w-2xl w-full border border-white/20 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className={`bg-gradient-to-br ${selectedWorld.color} rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto text-white shadow-2xl`}>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-4">
-                <span className="text-5xl">{selectedWorld.icon}</span>
+                <div className="text-4xl">{selectedWorld.icon}</div>
                 <div>
-                  <h3 className="text-2xl font-bold text-white">{selectedWorld.name}</h3>
+                  <h2 className="text-2xl font-bold">{selectedWorld.name}</h2>
                   <p className="text-blue-200">{selectedWorld.concept}</p>
-                  {selectedWorld.completed && (
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className="text-yellow-400 text-sm">👑</span>
-                      <span className="text-yellow-300 text-sm font-bold">World Mastered!</span>
-                    </div>
-                  )}
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedWorld(null)}
-                className="text-white hover:text-red-400 text-2xl"
+                className="text-white/80 hover:text-white transition-colors"
               >
-                ×
+                <ArrowLeft className="w-6 h-6" />
               </button>
             </div>
             
-            <p className="text-blue-100 mb-6">{selectedWorld.description}</p>
+            <p className="text-white/90 mb-6">{selectedWorld.description}</p>
             
-            {/* World Progress */}
-            <div className="bg-white/10 rounded-xl p-4 mb-6">
+            <div className="mb-6">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-white font-bold">World Progress</span>
+                <span className="text-white font-medium">World Progress</span>
                 <span className="text-white">{selectedWorld.progress}%</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-3">
                 <div 
-                  className={`h-3 rounded-full transition-all duration-1000 ${
+                  className={`h-3 rounded-full transition-all duration-300 ${
                     selectedWorld.completed 
                       ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
                       : 'bg-gradient-to-r from-blue-400 to-purple-500'
@@ -507,57 +441,341 @@ const WorldsPage = () => {
                           />
                         ))}
                       </div>
-                      {level.unlocked && (
-                        <ChevronRight className="w-5 h-5 text-blue-400" />
-                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
             
-            <div className="flex space-x-4">
-              <button 
-                onClick={() => setSelectedWorld(null)}
-                className="flex-1 px-6 py-3 bg-white/10 text-white rounded-xl hover:bg-white/20 transition-colors"
-              >
-                Back to Worlds
-              </button>
+            {selectedWorld.unlocked && (
               <button 
                 onClick={() => handleEnterWorld(selectedWorld.id)}
-                className={`flex-1 px-6 py-3 text-white font-bold rounded-xl hover:scale-105 transition-transform ${
+                className={`w-full px-6 py-3 text-white font-bold rounded-xl hover:scale-105 transition-transform shadow-lg flex items-center justify-center space-x-2 ${
                   selectedWorld.completed 
-                    ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' 
-                    : 'bg-gradient-to-r from-green-500 to-blue-500'
+                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-500' 
+                    : 'bg-gradient-to-r from-blue-400 to-purple-500'
                 }`}
-                disabled={!selectedWorld.unlocked}
               >
-                {selectedWorld.completed ? 'Replay Adventure' : 'Start Adventure'}
+                <Play className="w-5 h-5" />
+                <span>Enter World</span>
               </button>
-            </div>
+            )}
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes worldFloat {
-          0%, 100% { transform: translateY(0px) rotateY(0deg); }
-          50% { transform: translateY(-15px) rotateY(3deg); }
-        }
-        
-        @keyframes float {
-          0%, 100% { 
-            transform: translateY(0px) translateX(0px);
-            opacity: 0.6;
-          }
-          50% { 
-            transform: translateY(-20px) translateX(5px);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   );
 };
 
-export default WorldsPage;
+// Individual Level Component
+const LevelPage = ({ levelId }) => {
+  const navigate = useNavigate();
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameCompleted, setGameCompleted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [levelData, setLevelData] = useState(null);
+  const [timeSpent, setTimeSpent] = useState(0);
+  const [startTime, setStartTime] = useState(null);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    loadLevelData();
+  }, [levelId]);
+
+  useEffect(() => {
+    let interval;
+    if (gameStarted && !gameCompleted) {
+      interval = setInterval(() => {
+        setTimeSpent(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [gameStarted, gameCompleted]);
+
+  const loadLevelData = async () => {
+    try {
+      const userString = sessionStorage.getItem('user');
+      if (!userString) {
+        navigate('/login');
+        return;
+      }
+
+      const user = JSON.parse(userString);
+      setUserData(user);
+
+      const progress = await progressService.getUserProgress(user.uid);
+      if (!progress) {
+        navigate('/student-dashboard');
+        return;
+      }
+
+      // Find level data across all worlds
+      const allLevels = [];
+      Object.values(progress.worlds).forEach(world => {
+        Object.entries(world.levels).forEach(([key, level]) => {
+          allLevels.push({
+            ...level,
+            id: parseInt(key.replace('level', '')),
+            name: level.name || `Level ${key.replace('level', '')}`
+          });
+        });
+      });
+
+      const level = allLevels.find(l => l.id === parseInt(levelId));
+      if (!level) {
+        navigate('/worlds');
+        return;
+      }
+
+      setLevelData(level);
+    } catch (error) {
+      console.error('Error loading level:', error);
+      navigate('/worlds');
+    }
+  };
+
+  const startGame = () => {
+    setGameStarted(true);
+    setStartTime(Date.now());
+  };
+
+  const completeLevel = async (stars = 3) => {
+    setIsLoading(true);
+    try {
+      const result = await progressService.recordLevelAttempt(
+        parseInt(levelId), 
+        true, 
+        stars, 
+        timeSpent
+      );
+      
+      if (result.success) {
+        setGameCompleted(true);
+        // Show completion animation for 3 seconds then navigate back
+        setTimeout(() => {
+          navigate('/worlds');
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error completing level:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!levelData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-blue-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin w-12 h-12 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading level...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-800 via-green-700 to-emerald-800 relative overflow-hidden">
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center">
+            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-white font-bold">Saving Progress...</div>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Modal */}
+      {gameCompleted && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-3xl p-8 max-w-md w-full text-white text-center shadow-2xl">
+            <div className="text-6xl mb-4">🎉</div>
+            <h2 className="text-3xl font-bold mb-4">Level Complete!</h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-center space-x-1">
+                {[...Array(3)].map((_, i) => (
+                  <Star key={i} className="w-8 h-8 text-yellow-400 fill-current" />
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="bg-white/10 rounded-lg p-3">
+                  <Clock className="w-5 h-5 mx-auto mb-1" />
+                  <div className="font-bold">{formatTime(timeSpent)}</div>
+                  <div className="opacity-80">Time</div>
+                </div>
+                <div className="bg-white/10 rounded-lg p-3">
+                  <Trophy className="w-5 h-5 mx-auto mb-1" />
+                  <div className="font-bold">3/3</div>
+                  <div className="opacity-80">Stars</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="text-sm opacity-80 mb-4">
+              Returning to worlds in 3 seconds...
+            </div>
+            
+            <button
+              onClick={() => navigate('/worlds')}
+              className="bg-white/20 hover:bg-white/30 px-6 py-2 rounded-lg transition-colors"
+            >
+              Return to Worlds
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Level Header */}
+      <div className="relative z-10 bg-black/20 backdrop-blur-sm border-b border-white/10">
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/worlds')}
+                className="text-white/80 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-white">{levelData.name}</h1>
+                <p className="text-blue-200">Level {levelId}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1">
+                {[...Array(3)].map((_, i) => (
+                  <Star 
+                    key={i} 
+                    className={`w-5 h-5 ${
+                      i < levelData.stars 
+                        ? 'text-yellow-400 fill-current' 
+                        : 'text-white/30'
+                    }`}
+                  />
+                ))}
+              </div>
+              
+              <div className="text-white">
+                <Clock className="w-5 h-5 inline mr-1" />
+                {formatTime(timeSpent)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Level Content */}
+      <div className="relative z-10 max-w-4xl mx-auto px-6 py-8">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-8 text-center">
+          <div className="text-6xl mb-6">🎮</div>
+          <h2 className="text-3xl font-bold text-white mb-4">
+            {gameStarted ? 'Game in Progress' : 'Ready to Start?'}
+          </h2>
+          
+          {!gameStarted && (
+            <div className="space-y-4">
+              <p className="text-blue-200 text-lg">
+                Click the button below to begin your adventure
+              </p>
+              <button
+                onClick={startGame}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                <Play className="w-5 h-5 inline mr-2" />
+                Start Level
+              </button>
+            </div>
+          )}
+          
+          {gameStarted && !gameCompleted && (
+            <div className="space-y-6">
+              <p className="text-blue-200 text-lg">
+                Complete the coding challenge to finish this level!
+              </p>
+              
+              {/* Game simulation area */}
+              <div className="bg-black/20 rounded-xl p-6 border border-white/10">
+                <div className="text-white text-left">
+                  <h3 className="text-lg font-bold mb-4">Game Area</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                      <span>Drag code blocks here</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-400 rounded-full"></div>
+                      <span>Execute your code</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
+                      <span>See results</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Simulation buttons */}
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => completeLevel(1)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Complete (1 Star)
+                </button>
+                <button
+                  onClick={() => completeLevel(2)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Complete (2 Stars)
+                </button>
+                <button
+                  onClick={() => completeLevel(3)}
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors"
+                >
+                  Complete (3 Stars)
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Main App Component with Routing
+const WorldsLevelsApp = () => {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/worlds" element={<WorldsPage />} />
+        <Route path="/level-:levelId" element={<LevelPageWrapper />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+// Wrapper component to pass levelId as prop
+const LevelPageWrapper = () => {
+  const navigate = useNavigate();
+  const levelId = window.location.pathname.split('/level-')[1];
+  
+  if (!levelId) {
+    navigate('/worlds');
+    return null;
+  }
+  
+  return <LevelPage levelId={levelId} />;
+};
+
+export default WorldsLevelsApp;
