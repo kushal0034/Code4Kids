@@ -44,9 +44,9 @@ class ProgressService {
             progress: 0,
             unlocked: true,
             levels: {
-              level1: { completed: false, stars: 0, attempts: 0, bestTime: null },
-              level2: { completed: false, stars: 0, attempts: 0, bestTime: null },
-              level3: { completed: false, stars: 0, attempts: 0, bestTime: null }
+              level1: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: true },
+              level2: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false },
+              level3: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false }
             }
           },
           forest: {
@@ -54,9 +54,9 @@ class ProgressService {
             progress: 0,
             unlocked: false,
             levels: {
-              level4: { completed: false, stars: 0, attempts: 0, bestTime: null },
-              level5: { completed: false, stars: 0, attempts: 0, bestTime: null },
-              level6: { completed: false, stars: 0, attempts: 0, bestTime: null }
+              level4: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false },
+              level5: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false },
+              level6: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false }
             }
           },
           mountain: {
@@ -64,9 +64,9 @@ class ProgressService {
             progress: 0,
             unlocked: false,
             levels: {
-              level7: { completed: false, stars: 0, attempts: 0, bestTime: null },
-              level8: { completed: false, stars: 0, attempts: 0, bestTime: null },
-              level9: { completed: false, stars: 0, attempts: 0, bestTime: null }
+              level7: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false },
+              level8: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false },
+              level9: { completed: false, stars: 0, attempts: 0, bestTime: null, unlocked: false }
             }
           }
         },
@@ -89,6 +89,8 @@ class ProgressService {
     if (!user) {
       throw new Error('User not authenticated');
     }
+
+    console.log(`Recording level attempt: Level ${levelId}, Success: ${success}, Stars: ${stars}`);
 
     try {
       const progressRef = doc(db, 'userProgress', user.uid);
@@ -147,6 +149,12 @@ class ProgressService {
           // Update rank based on total levels
           updateData.rank = this.calculateRank(updateData.totalLevelsCompleted);
           
+          // Unlock next level in current world
+          const nextLevel = this.getNextLevelInWorld(world, level);
+          if (nextLevel) {
+            updateData[`worlds.${world}.levels.${nextLevel}.unlocked`] = true;
+          }
+
           // Unlock next world if current world is completed
           if (worldProgress === 100) {
             const nextWorld = this.getNextWorld(world);
@@ -169,11 +177,13 @@ class ProgressService {
           updateData.achievements = [...existingAchievements, ...newAchievements];
         }
 
+        console.log('Updating progress with data:', updateData);
         await updateDoc(progressRef, updateData);
 
         // Record detailed session data
         await this.recordGameSession(user.uid, levelId, success, stars, timeSpent, codeBlocks);
 
+        console.log('Progress updated successfully');
         return {
           success: true,
           newAchievements,
@@ -256,6 +266,21 @@ class ProgressService {
     const worldOrder = ['village', 'forest', 'mountain'];
     const currentIndex = worldOrder.indexOf(currentWorld);
     return currentIndex < worldOrder.length - 1 ? worldOrder[currentIndex + 1] : null;
+  }
+
+  // Get next level in current world
+  getNextLevelInWorld(world, currentLevel) {
+    const levelOrder = {
+      village: ['level1', 'level2', 'level3'],
+      forest: ['level4', 'level5', 'level6'],
+      mountain: ['level7', 'level8', 'level9']
+    };
+    
+    const levelsInWorld = levelOrder[world];
+    if (!levelsInWorld) return null;
+    
+    const currentIndex = levelsInWorld.indexOf(currentLevel);
+    return currentIndex < levelsInWorld.length - 1 ? levelsInWorld[currentIndex + 1] : null;
   }
 
   // Check for new achievements

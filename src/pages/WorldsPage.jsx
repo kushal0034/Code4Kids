@@ -42,6 +42,31 @@ const WorldsPage = () => {
     loadUserData();
   }, []);
 
+  // Add effect to refresh data when user returns from a level
+  useEffect(() => {
+    const handleFocus = () => {
+      loadUserData();
+    };
+
+    const handleStorageChange = () => {
+      loadUserData();
+    };
+
+    const handleLevelCompleted = () => {
+      loadUserData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('levelCompleted', handleLevelCompleted);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('levelCompleted', handleLevelCompleted);
+    };
+  }, []);
+
   const loadUserData = async () => {
     try {
       const userString = sessionStorage.getItem('user');
@@ -91,7 +116,7 @@ const WorldsPage = () => {
           ...level,
           id: parseInt(key.replace('level', '')),
           name: level.name || `Level ${key.replace('level', '')}`,
-          unlocked: level.unlocked || (key === 'level1' && worldsData.village.unlocked)
+          unlocked: level.unlocked !== undefined ? level.unlocked : (key === 'level1' && worldsData.village.unlocked)
         })),
         completed: worldsData.village.progress === 100
       },
@@ -109,7 +134,7 @@ const WorldsPage = () => {
           ...level,
           id: parseInt(key.replace('level', '')),
           name: level.name || `Level ${key.replace('level', '')}`,
-          unlocked: level.unlocked || false
+          unlocked: level.unlocked !== undefined ? level.unlocked : false
         })),
         completed: worldsData.forest.progress === 100
       },
@@ -127,7 +152,7 @@ const WorldsPage = () => {
           ...level,
           id: parseInt(key.replace('level', '')),
           name: level.name || `Level ${key.replace('level', '')}`,
-          unlocked: level.unlocked || false
+          unlocked: level.unlocked !== undefined ? level.unlocked : false
         })),
         completed: worldsData.mountain.progress === 100
       }

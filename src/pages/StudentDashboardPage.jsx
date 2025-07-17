@@ -14,9 +14,10 @@ import {
   BookOpen,
   Target,
   Lock,
-  Play
+  Play,
+  RefreshCw
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { progressService } from '../services/progressService';
 
 const StudentDashboard = () => {
@@ -27,14 +28,63 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     loadUserData();
   }, []);
 
+  // Refresh data when location changes (e.g., navigating back to dashboard)
+  useEffect(() => {
+    if (location.pathname === '/student-dashboard') {
+      loadUserData();
+    }
+  }, [location]);
+
+  // Refresh data when navigating to this page
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        loadUserData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Add effect to refresh data when user returns from a level
+  useEffect(() => {
+    const handleFocus = () => {
+      loadUserData();
+    };
+
+    const handleStorageChange = () => {
+      loadUserData();
+    };
+
+    const handleLevelCompleted = () => {
+      loadUserData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('levelCompleted', handleLevelCompleted);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('levelCompleted', handleLevelCompleted);
+    };
+  }, []);
+
   const loadUserData = async () => {
     try {
       setLoading(true);
+      console.log('Loading user data...');
+      
       const user = progressService.getCurrentUser();
       
       if (!user) {
@@ -47,6 +97,7 @@ const StudentDashboard = () => {
       const progress = await progressService.getDashboardData(user.uid);
       
       console.log('Loaded progress data:', progress);
+      console.log('Village levels:', progress?.worlds?.village?.levels);
       console.log('Achievements in progress:', progress?.achievements);
       
       setProgressData(progress);
@@ -392,6 +443,13 @@ const StudentDashboard = () => {
               <p className="text-blue-200 mt-1">Continue your magical coding adventure</p>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={loadUserData}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Refresh</span>
+              </button>
               <div className="bg-gradient-to-r from-yellow-400 to-orange-500 px-4 py-2 rounded-xl">
                 <span className="text-white font-bold flex items-center space-x-1">
                   <Crown className="w-4 h-4" />

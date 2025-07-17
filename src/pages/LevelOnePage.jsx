@@ -184,6 +184,11 @@ const LevelOnePage = () => {
           newRank: result.newRank
         });
         setShowResults(true);
+        
+        // Trigger a custom event to notify other components to refresh
+        window.dispatchEvent(new CustomEvent('levelCompleted', { 
+          detail: { levelId: 1, stars, success: true } 
+        }));
       }
 
     } catch (error) {
