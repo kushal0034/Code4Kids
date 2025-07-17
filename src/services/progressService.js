@@ -295,7 +295,8 @@ class ProgressService {
         name: 'First Steps',
         description: 'Complete your first level',
         icon: '🌟',
-        earnedAt: serverTimestamp()
+        rarity: 'common',
+        earnedAt: new Date()
       });
     }
 
@@ -306,7 +307,92 @@ class ProgressService {
         name: 'Message Master',
         description: 'Successfully deliver all village messages',
         icon: '📮',
-        earnedAt: serverTimestamp()
+        rarity: 'common',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 3 completion
+    if (levelId === 3 && !existingAchievements.includes('potion_brewmaster')) {
+      newAchievements.push({
+        id: 'potion_brewmaster',
+        name: 'Potion Brewmaster',
+        description: 'Master the art of magical potion brewing',
+        icon: '🧪',
+        rarity: 'common',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 4 completion
+    if (levelId === 4 && !existingAchievements.includes('weather_navigator')) {
+      newAchievements.push({
+        id: 'weather_navigator',
+        name: 'Weather Navigator',
+        description: 'Navigate through any weather condition',
+        icon: '🌤️',
+        rarity: 'common',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 5 completion
+    if (levelId === 5 && !existingAchievements.includes('monster_slayer')) {
+      newAchievements.push({
+        id: 'monster_slayer',
+        name: 'Monster Slayer',
+        description: 'Defeat all forest monsters with magic',
+        icon: '⚔️',
+        rarity: 'uncommon',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 6 completion
+    if (levelId === 6 && !existingAchievements.includes('village_helper')) {
+      newAchievements.push({
+        id: 'village_helper',
+        name: 'Village Helper',
+        description: 'Help all villagers with their problems',
+        icon: '🤝',
+        rarity: 'uncommon',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 7 completion
+    if (levelId === 7 && !existingAchievements.includes('bridge_builder')) {
+      newAchievements.push({
+        id: 'bridge_builder',
+        name: 'Bridge Builder',
+        description: 'Master the art of bridge crossing',
+        icon: '🌉',
+        rarity: 'uncommon',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 8 completion
+    if (levelId === 8 && !existingAchievements.includes('rock_crusher')) {
+      newAchievements.push({
+        id: 'rock_crusher',
+        name: 'Rock Crusher',
+        description: 'Clear all obstacles from your path',
+        icon: '🪨',
+        rarity: 'rare',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level 9 completion
+    if (levelId === 9 && !existingAchievements.includes('dragon_slayer')) {
+      newAchievements.push({
+        id: 'dragon_slayer',
+        name: 'Dragon Slayer',
+        description: 'Defeat the mighty dragon in epic battle',
+        icon: '🐉',
+        rarity: 'legendary',
+        earnedAt: new Date()
       });
     }
 
@@ -318,7 +404,8 @@ class ProgressService {
           name: 'Apple Master',
           description: 'Perfect score in Apple Collection',
           icon: '🍎',
-          earnedAt: serverTimestamp()
+          rarity: 'rare',
+          earnedAt: new Date()
         });
       }
 
@@ -328,9 +415,115 @@ class ProgressService {
           name: 'Delivery Expert',
           description: 'Perfect score in Message Delivery',
           icon: '🚀',
-          earnedAt: serverTimestamp()
+          rarity: 'rare',
+          earnedAt: new Date()
         });
       }
+
+      if (levelId === 3 && !existingAchievements.includes('perfect_potion')) {
+        newAchievements.push({
+          id: 'perfect_potion',
+          name: 'Perfect Potion',
+          description: 'Brew the perfect potion with 3 stars',
+          icon: '⭐',
+          rarity: 'rare',
+          earnedAt: new Date()
+        });
+      }
+
+      if (levelId === 9 && !existingAchievements.includes('dragon_destroyer')) {
+        newAchievements.push({
+          id: 'dragon_destroyer',
+          name: 'Dragon Destroyer',
+          description: 'Defeat the dragon with perfect execution',
+          icon: '💥',
+          rarity: 'legendary',
+          earnedAt: new Date()
+        });
+      }
+    }
+
+    // Streak achievements
+    const currentStreak = progressData.currentStreak || 0;
+    if (currentStreak >= 3 && !existingAchievements.includes('on_fire')) {
+      newAchievements.push({
+        id: 'on_fire',
+        name: 'On Fire!',
+        description: 'Complete 3 levels in a row',
+        icon: '🔥',
+        rarity: 'uncommon',
+        earnedAt: new Date()
+      });
+    }
+
+    if (currentStreak >= 5 && !existingAchievements.includes('unstoppable')) {
+      newAchievements.push({
+        id: 'unstoppable',
+        name: 'Unstoppable',
+        description: 'Complete 5 levels in a row',
+        icon: '⚡',
+        rarity: 'rare',
+        earnedAt: new Date()
+      });
+    }
+
+    // Level count achievements
+    const totalCompleted = progressData.totalLevelsCompleted || 0;
+    if (totalCompleted >= 5 && !existingAchievements.includes('problem_solver')) {
+      newAchievements.push({
+        id: 'problem_solver',
+        name: 'Problem Solver',
+        description: 'Complete 5 levels',
+        icon: '🧩',
+        rarity: 'uncommon',
+        earnedAt: new Date()
+      });
+    }
+
+    if (totalCompleted >= 9 && !existingAchievements.includes('code_master')) {
+      newAchievements.push({
+        id: 'code_master',
+        name: 'Code Master',
+        description: 'Complete all 9 levels',
+        icon: '👑',
+        rarity: 'legendary',
+        earnedAt: new Date()
+      });
+    }
+
+    // Star achievements
+    const totalStars = progressData.totalStars || 0;
+    if (totalStars >= 10 && !existingAchievements.includes('star_collector')) {
+      newAchievements.push({
+        id: 'star_collector',
+        name: 'Star Collector',
+        description: 'Earn 10 stars total',
+        icon: '⭐',
+        rarity: 'common',
+        earnedAt: new Date()
+      });
+    }
+
+    if (totalStars >= 20 && !existingAchievements.includes('star_master')) {
+      newAchievements.push({
+        id: 'star_master',
+        name: 'Star Master',
+        description: 'Earn 20 stars total',
+        icon: '🌟',
+        rarity: 'rare',
+        earnedAt: new Date()
+      });
+    }
+
+    if (totalStars >= 27 && !existingAchievements.includes('perfect_wizard')) {
+      newAchievements.push({
+        id: 'perfect_wizard',
+        name: 'Perfect Wizard',
+        description: 'Earn all 27 stars - Perfect score on every level!',
+        icon: '🏆',
+        rarity: 'legendary',
+        earnedAt: new Date()
+      });
     }
 
     // String variable mastery (complete both Level 1 and 2)
@@ -344,7 +537,8 @@ class ProgressService {
           name: 'String Wizard',
           description: 'Master string variables in Village levels',
           icon: '🔤',
-          earnedAt: serverTimestamp()
+          rarity: 'uncommon',
+          earnedAt: new Date()
         });
       }
     }
@@ -356,7 +550,8 @@ class ProgressService {
         name: 'Speedy Messenger',
         description: 'Deliver messages in record time',
         icon: '⚡',
-        earnedAt: serverTimestamp()
+        rarity: 'uncommon',
+        earnedAt: new Date()
       });
     }
 
@@ -379,7 +574,8 @@ class ProgressService {
             name: 'Variable Wizard',
             description: 'Master all Variable levels',
             icon: '🧙‍♂️',
-            earnedAt: serverTimestamp()
+            rarity: 'rare',
+            earnedAt: new Date()
           });
         }
         
@@ -389,7 +585,8 @@ class ProgressService {
             name: 'Decision Maker',
             description: 'Complete all Forest Decision levels',
             icon: '🌲',
-            earnedAt: serverTimestamp()
+            rarity: 'rare',
+            earnedAt: new Date()
           });
         }
         
@@ -399,13 +596,58 @@ class ProgressService {
             name: 'Loop Master',
             description: 'Conquer all Mountain Challenge levels',
             icon: '⛰️',
-            earnedAt: serverTimestamp()
+            rarity: 'rare',
+            earnedAt: new Date()
           });
         }
       }
     }
 
     return newAchievements;
+  }
+
+  // Get all possible achievements
+  getAllAchievements() {
+    return [
+      // Level completion achievements
+      { id: 'first_steps', name: 'First Steps', description: 'Complete your first level', icon: '🌟', rarity: 'common' },
+      { id: 'message_master', name: 'Message Master', description: 'Successfully deliver all village messages', icon: '📮', rarity: 'common' },
+      { id: 'potion_brewmaster', name: 'Potion Brewmaster', description: 'Master the art of magical potion brewing', icon: '🧪', rarity: 'common' },
+      { id: 'weather_navigator', name: 'Weather Navigator', description: 'Navigate through any weather condition', icon: '🌤️', rarity: 'common' },
+      { id: 'monster_slayer', name: 'Monster Slayer', description: 'Defeat all forest monsters with magic', icon: '⚔️', rarity: 'uncommon' },
+      { id: 'village_helper', name: 'Village Helper', description: 'Help all villagers with their problems', icon: '🤝', rarity: 'uncommon' },
+      { id: 'bridge_builder', name: 'Bridge Builder', description: 'Master the art of bridge crossing', icon: '🌉', rarity: 'uncommon' },
+      { id: 'rock_crusher', name: 'Rock Crusher', description: 'Clear all obstacles from your path', icon: '🪨', rarity: 'rare' },
+      { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat the mighty dragon in epic battle', icon: '🐉', rarity: 'legendary' },
+      
+      // Perfect score achievements
+      { id: 'apple_master', name: 'Apple Master', description: 'Perfect score in Apple Collection', icon: '🍎', rarity: 'rare' },
+      { id: 'delivery_expert', name: 'Delivery Expert', description: 'Perfect score in Message Delivery', icon: '🚀', rarity: 'rare' },
+      { id: 'perfect_potion', name: 'Perfect Potion', description: 'Brew the perfect potion with 3 stars', icon: '⭐', rarity: 'rare' },
+      { id: 'dragon_destroyer', name: 'Dragon Destroyer', description: 'Defeat the dragon with perfect execution', icon: '💥', rarity: 'legendary' },
+      
+      // Streak achievements
+      { id: 'on_fire', name: 'On Fire!', description: 'Complete 3 levels in a row', icon: '🔥', rarity: 'uncommon' },
+      { id: 'unstoppable', name: 'Unstoppable', description: 'Complete 5 levels in a row', icon: '⚡', rarity: 'rare' },
+      
+      // Level count achievements
+      { id: 'problem_solver', name: 'Problem Solver', description: 'Complete 5 levels', icon: '🧩', rarity: 'uncommon' },
+      { id: 'code_master', name: 'Code Master', description: 'Complete all 9 levels', icon: '👑', rarity: 'legendary' },
+      
+      // Star achievements
+      { id: 'star_collector', name: 'Star Collector', description: 'Earn 10 stars total', icon: '⭐', rarity: 'common' },
+      { id: 'star_master', name: 'Star Master', description: 'Earn 20 stars total', icon: '🌟', rarity: 'rare' },
+      { id: 'perfect_wizard', name: 'Perfect Wizard', description: 'Earn all 27 stars - Perfect score on every level!', icon: '🏆', rarity: 'legendary' },
+      
+      // Special achievements
+      { id: 'string_wizard', name: 'String Wizard', description: 'Master string variables in Village levels', icon: '🔤', rarity: 'uncommon' },
+      { id: 'speedy_messenger', name: 'Speedy Messenger', description: 'Deliver messages in record time', icon: '⚡', rarity: 'uncommon' },
+      
+      // World completion achievements
+      { id: 'variable_wizard', name: 'Variable Wizard', description: 'Master all Variable levels', icon: '🧙‍♂️', rarity: 'rare' },
+      { id: 'decision_maker', name: 'Decision Maker', description: 'Complete all Forest Decision levels', icon: '🌲', rarity: 'rare' },
+      { id: 'loop_master', name: 'Loop Master', description: 'Conquer all Mountain Challenge levels', icon: '⛰️', rarity: 'rare' }
+    ];
   }
 
   // Get user progress for dashboard
@@ -513,6 +755,26 @@ class ProgressService {
     } catch (error) {
       console.error('Error migrating progress data:', error);
       return progressData;
+    }
+  }
+
+  // Update user profile
+  async updateUserProfile(userId, profileData) {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        username: profileData.username,
+        email: profileData.email,
+        parentName: profileData.parentName,
+        parentEmail: profileData.parentEmail,
+        updatedAt: serverTimestamp()
+      });
+      
+      console.log('Profile updated successfully');
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
     }
   }
 }

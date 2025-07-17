@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, Trophy, Clock, ChevronDown, ChevronUp, Info, Target, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { progressService } from '../services/progressService';
 
 const LevelOnePage = () => {
+  const navigate = useNavigate();
   const [draggedBlock, setDraggedBlock] = useState(null);
   const [codeBlocks, setCodeBlocks] = useState([]);
   const [appleCount, setAppleCount] = useState(0);
@@ -25,11 +27,11 @@ const LevelOnePage = () => {
   useEffect(() => {
     const userData = progressService.getCurrentUser();
     if (!userData) {
-      window.location.href = '/login';
+      navigate('/login');
     } else {
       setUser(userData);
     }
-  }, []);
+  }, [navigate]);
 
   const availableBlocks = [
     {
@@ -379,7 +381,7 @@ const LevelOnePage = () => {
                 Continue
               </button>
               <button
-                onClick={() => window.location.href = '/worlds'}
+                onClick={() => navigate('/worlds')}
                 className="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 py-3 rounded-lg transition-colors"
               >
                 Return to Worlds
@@ -395,7 +397,7 @@ const LevelOnePage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => window.location.href = '/worlds'}
+                onClick={() => navigate('/worlds')}
                 className="text-white/80 hover:text-white transition-colors"
               >
                 <ArrowLeft className="w-6 h-6" />
@@ -411,7 +413,7 @@ const LevelOnePage = () => {
                 <span className="text-white text-sm">🍎 {appleCount}/5</span>
               </div>
               <button
-                onClick={() => window.location.href = '/student-dashboard'}
+                onClick={() => navigate('/student-dashboard')}
                 className="text-white/80 hover:text-white transition-colors"
               >
                 <Home className="w-6 h-6" />
@@ -635,7 +637,7 @@ const LevelOnePage = () => {
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="flex-1 border-2 border-dashed border-white/30 rounded-xl p-4 min-h-32 max-h-64 overflow-y-auto pr-2"
+            className="flex-1 border-2 border-dashed border-white/30 rounded-xl p-4 min-h-32 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-white/10"
           >
             {codeBlocks.length === 0 ? (
               <div className="flex items-center justify-center h-full text-white/60 text-center">

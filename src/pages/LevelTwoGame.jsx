@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, MessageCircle, Trophy, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { progressService } from '../services/progressService';
 
 const LevelTwoGame = () => {
+  const navigate = useNavigate();
   const [draggedBlock, setDraggedBlock] = useState(null);
   const [codeBlocks, setCodeBlocks] = useState([]);
   const [gameState, setGameState] = useState('playing'); // 'playing', 'success', 'error'
@@ -24,11 +26,11 @@ const LevelTwoGame = () => {
     const userData = progressService.getCurrentUser();
     if (!userData) {
       // Redirect to login if no user
-      window.location.href = '/login';
+      navigate('/login');
     } else {
       setUser(userData);
     }
-  }, []);
+  }, [navigate]);
 
   const villagers = [
     { id: 1, name: 'Baker Tom', position: 2, icon: '👨‍🍳', message: 'Fresh bread ready!', needsMessage: true },
@@ -459,128 +461,249 @@ const LevelTwoGame = () => {
         </div>
       )}
 
-      {/* Background Village Elements */}
+      {/* Enhanced Background Village Elements */}
       <div className="fixed inset-0 z-0">
-        {/* Village Ground */}
-        <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-amber-600 to-amber-500 rounded-t-full transform -translate-y-8" />
+        {/* Animated Sky */}
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-400 via-purple-500 to-pink-500 animate-pulse" />
         
-        {/* Village Buildings */}
-        <div className="absolute bottom-16 left-12 w-16 h-20 bg-amber-700 rounded-t-lg">
-          <div className="w-12 h-12 bg-red-600 rounded-full mx-auto transform -translate-y-3" />
-          <div className="text-center text-xs text-white mt-1">Bakery</div>
-        </div>
-        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-18 h-24 bg-blue-700 rounded-t-lg">
-          <div className="w-14 h-14 bg-green-600 rounded-full mx-auto transform -translate-y-4" />
-          <div className="text-center text-xs text-white mt-1">School</div>
-        </div>
-        <div className="absolute bottom-16 right-12 w-16 h-20 bg-green-700 rounded-t-lg">
-          <div className="w-12 h-12 bg-brown-600 rounded-full mx-auto transform -translate-y-3" />
-          <div className="text-center text-xs text-white mt-1">Farm</div>
+        {/* Floating Clouds */}
+        <div className="absolute top-10 left-10 text-4xl animate-float">☁️</div>
+        <div className="absolute top-20 right-20 text-3xl animate-float" style={{ animationDelay: '1s' }}>☁️</div>
+        <div className="absolute top-16 left-1/2 text-2xl animate-float" style={{ animationDelay: '2s' }}>☁️</div>
+        
+        {/* Village Ground with Grass */}
+        <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-t from-green-600 via-green-500 to-green-400 rounded-t-full transform -translate-y-8" />
+        <div className="absolute bottom-8 left-0 w-full h-4 bg-gradient-to-r from-green-700 via-green-600 to-green-700 opacity-60" />
+        
+        {/* Enhanced Village Buildings */}
+        <div className="absolute bottom-16 left-12 w-20 h-24 bg-gradient-to-b from-amber-600 to-amber-800 rounded-t-lg shadow-2xl transform hover:scale-105 transition-transform cursor-pointer">
+          <div className="w-16 h-16 bg-gradient-to-b from-red-500 to-red-700 rounded-full mx-auto transform -translate-y-4 shadow-lg" />
+          <div className="w-3 h-6 bg-amber-900 mx-auto mt-2" />
+          <div className="text-center text-xs text-white mt-1 font-bold">🍞 Bakery</div>
+          <div className="absolute -top-2 -right-2 text-lg animate-spin">🍞</div>
         </div>
         
-        {/* Message Icons */}
-        <div className="absolute top-32 left-20 text-2xl animate-bounce">💌</div>
-        <div className="absolute top-40 right-24 text-2xl animate-bounce" style={{ animationDelay: '1s' }}>📨</div>
-        <div className="absolute top-24 left-1/2 text-2xl animate-bounce" style={{ animationDelay: '2s' }}>📬</div>
+        <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-22 h-28 bg-gradient-to-b from-blue-600 to-blue-800 rounded-t-lg shadow-2xl hover:scale-105 transition-transform cursor-pointer">
+          <div className="w-18 h-18 bg-gradient-to-b from-red-500 to-red-700 rounded-full mx-auto transform -translate-y-4 shadow-lg" />
+          <div className="w-4 h-8 bg-blue-900 mx-auto mt-2" />
+          <div className="text-center text-xs text-white mt-1 font-bold">🏫 School</div>
+          <div className="absolute -top-2 -right-2 text-lg animate-bounce">📚</div>
+        </div>
+        
+        <div className="absolute bottom-16 right-12 w-20 h-24 bg-gradient-to-b from-green-600 to-green-800 rounded-t-lg shadow-2xl transform hover:scale-105 transition-transform cursor-pointer">
+          <div className="w-16 h-16 bg-gradient-to-b from-amber-600 to-amber-800 rounded-full mx-auto transform -translate-y-4 shadow-lg" />
+          <div className="w-3 h-6 bg-green-900 mx-auto mt-2" />
+          <div className="text-center text-xs text-white mt-1 font-bold">🌾 Farm</div>
+          <div className="absolute -top-2 -right-2 text-lg animate-pulse">🌾</div>
+        </div>
+        
+        {/* Animated Message Icons */}
+        <div className="absolute top-32 left-20 text-3xl animate-bounce-slow">💌</div>
+        <div className="absolute top-40 right-24 text-3xl animate-bounce-slow" style={{ animationDelay: '1s' }}>📨</div>
+        <div className="absolute top-24 left-1/2 text-3xl animate-bounce-slow" style={{ animationDelay: '2s' }}>📬</div>
+        
+        {/* Decorative Elements */}
+        <div className="absolute bottom-20 left-1/4 text-2xl animate-pulse">🌸</div>
+        <div className="absolute bottom-24 right-1/4 text-2xl animate-pulse" style={{ animationDelay: '1s' }}>🌺</div>
+        <div className="absolute bottom-28 left-3/4 text-xl animate-pulse" style={{ animationDelay: '2s' }}>🌻</div>
+        
+        {/* Magical Sparkles */}
+        <div className="absolute top-1/4 left-1/4 text-xl animate-ping">✨</div>
+        <div className="absolute top-1/3 right-1/3 text-xl animate-ping" style={{ animationDelay: '1s' }}>✨</div>
+        <div className="absolute top-1/2 left-1/3 text-xl animate-ping" style={{ animationDelay: '2s' }}>✨</div>
       </div>
+      
+      {/* Custom CSS for new animations */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) translateX(0px); }
+          25% { transform: translateY(-10px) translateX(5px); }
+          50% { transform: translateY(-20px) translateX(0px); }
+          75% { transform: translateY(-10px) translateX(-5px); }
+        }
+        
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-15px) scale(1.1); }
+        }
+        
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        
+        .animate-bounce-slow {
+          animation: bounce-slow 3s ease-in-out infinite;
+        }
+      `}</style>
 
-      {/* Header */}
-      <div className="relative z-10 bg-black/20 backdrop-blur-sm border-b border-white/20 p-4">
+      {/* Enhanced Header */}
+      <div className="relative z-10 bg-gradient-to-r from-purple-900/80 to-blue-900/80 backdrop-blur-lg border-b border-white/30 p-4 shadow-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link to="/worlds" className="flex items-center space-x-2 text-white hover:text-yellow-300 transition-colors">
+            <Link to="/worlds" className="flex items-center space-x-2 text-white hover:text-yellow-300 transition-all duration-300 hover:scale-105 bg-white/10 px-3 py-2 rounded-lg">
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Worlds</span>
+              <span className="font-semibold">Back to Worlds</span>
             </Link>
-            <div className="h-6 w-px bg-white/30" />
-            <div className="flex items-center space-x-2">
-              <span className="text-2xl">🏘️</span>
-              <span className="text-white font-bold">Village Basics - Level 2</span>
+            <div className="h-8 w-px bg-gradient-to-b from-transparent via-white/50 to-transparent" />
+            <div className="flex items-center space-x-3">
+              <span className="text-3xl animate-pulse">🏘️</span>
+              <div>
+                <span className="text-white font-bold text-lg">Village Basics - Level 2</span>
+                <div className="text-yellow-300 text-sm font-medium">📮 Message Delivery Master</div>
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="bg-white/20 px-4 py-2 rounded-lg">
-              <span className="text-white">Messages: {deliveredMessages.length}/3</span>
+            <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/20 shadow-lg">
+              <div className="flex items-center space-x-2">
+                <MessageCircle className="w-4 h-4 text-blue-300" />
+                <span className="text-white font-bold">Messages: {deliveredMessages.length}/3</span>
+              </div>
             </div>
             {user && (
-              <div className="bg-white/20 px-4 py-2 rounded-lg">
-                <span className="text-white">{user.username}</span>
+              <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/20 shadow-lg">
+                <div className="flex items-center space-x-2">
+                  <span className="text-2xl">🧙‍♂️</span>
+                  <span className="text-white font-bold">{user.username}</span>
+                </div>
               </div>
             )}
-            <Link to="/student-dashboard" className="text-white hover:text-yellow-300 transition-colors">
-              <Home className="w-5 h-5" />
+            <Link to="/student-dashboard" className="text-white hover:text-yellow-300 transition-all duration-300 hover:scale-110 bg-white/10 p-3 rounded-lg">
+              <Home className="w-6 h-6" />
             </Link>
           </div>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="mt-4 bg-white/10 rounded-full h-2 overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-green-400 to-blue-500 transition-all duration-500 ease-out"
+            style={{ width: `${(deliveredMessages.length / 3) * 100}%` }}
+          />
         </div>
       </div>
 
       <div className="relative z-10 p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-80px)]">
         
-        {/* Instructions Panel */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-3xl border border-white/20 p-6 overflow-y-auto">
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center space-x-2">
-            <span className="text-3xl">📮</span>
-            <span>Mission: Message Delivery</span>
+        {/* Enhanced Instructions Panel */}
+        <div className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 backdrop-blur-lg rounded-3xl border border-white/30 p-6 overflow-y-auto shadow-2xl">
+          <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-3">
+            <span className="text-4xl animate-bounce">📮</span>
+            <div>
+              <div>Mission: Message Delivery</div>
+              <div className="text-sm text-blue-300 font-normal">Master String Variables!</div>
+            </div>
           </h2>
           
-          <div className="space-y-4 text-white">
-            <div className="bg-blue-500/20 p-4 rounded-xl border border-blue-400/30">
-              <h3 className="font-bold mb-2">🎯 Goal:</h3>
-              <p className="text-sm">Deliver the correct message to each villager using string variables!</p>
+          <div className="space-y-5 text-white">
+            <div className="bg-gradient-to-r from-blue-500/30 to-cyan-500/30 p-5 rounded-2xl border border-blue-400/40 shadow-lg backdrop-blur-sm hover:scale-105 transition-transform">
+              <h3 className="font-bold mb-3 flex items-center space-x-2">
+                <span className="text-2xl">🎯</span>
+                <span>Mission Goal</span>
+              </h3>
+              <p className="text-sm leading-relaxed">Deliver the correct message to each villager using string variables! Master the art of storing and retrieving text data.</p>
             </div>
             
-            <div className="bg-purple-500/20 p-4 rounded-xl border border-purple-400/30">
-              <h3 className="font-bold mb-2">👥 Villagers:</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center space-x-2">
-                  <span>👨‍🍳</span>
-                  <span>Baker Tom (Pos 2): "Fresh bread ready!"</span>
+            <div className="bg-gradient-to-r from-purple-500/30 to-pink-500/30 p-5 rounded-2xl border border-purple-400/40 shadow-lg backdrop-blur-sm hover:scale-105 transition-transform">
+              <h3 className="font-bold mb-3 flex items-center space-x-2">
+                <span className="text-2xl">👥</span>
+                <span>Meet the Villagers</span>
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center space-x-3 bg-white/10 p-2 rounded-lg">
+                  <span className="text-2xl">👨‍🍳</span>
+                  <div>
+                    <div className="font-semibold text-orange-300">Baker Tom</div>
+                    <div className="text-xs text-gray-300">Position 2: "Fresh bread ready!"</div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span>👩‍🏫</span>
-                  <span>Teacher Sara (Pos 4): "Class starts soon!"</span>
+                <div className="flex items-center space-x-3 bg-white/10 p-2 rounded-lg">
+                  <span className="text-2xl">👩‍🏫</span>
+                  <div>
+                    <div className="font-semibold text-blue-300">Teacher Sara</div>
+                    <div className="text-xs text-gray-300">Position 4: "Class starts soon!"</div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span>👨‍🌾</span>
-                  <span>Farmer Joe (Pos 6): "Harvest is done!"</span>
+                <div className="flex items-center space-x-3 bg-white/10 p-2 rounded-lg">
+                  <span className="text-2xl">👨‍🌾</span>
+                  <div>
+                    <div className="font-semibold text-green-300">Farmer Joe</div>
+                    <div className="text-xs text-gray-300">Position 6: "Harvest is done!"</div>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="bg-green-500/20 p-4 rounded-xl border border-green-400/30">
-              <h3 className="font-bold mb-2">💡 Strategy:</h3>
-              <ul className="text-sm space-y-1">
-                <li>• Create a message variable first</li>
-                <li>• Store the right message for each villager</li>
-                <li>• Move to their position</li>
-                <li>• Deliver the message</li>
-                <li>• Clear message before next delivery</li>
+            <div className="bg-gradient-to-r from-green-500/30 to-emerald-500/30 p-5 rounded-2xl border border-green-400/40 shadow-lg backdrop-blur-sm hover:scale-105 transition-transform">
+              <h3 className="font-bold mb-3 flex items-center space-x-2">
+                <span className="text-2xl">💡</span>
+                <span>Winning Strategy</span>
+              </h3>
+              <ul className="text-sm space-y-2">
+                <li className="flex items-center space-x-2">
+                  <span className="text-blue-400">1️⃣</span>
+                  <span>Create a message variable first</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span className="text-purple-400">2️⃣</span>
+                  <span>Store the right message for each villager</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span className="text-green-400">3️⃣</span>
+                  <span>Move to their position</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span className="text-orange-400">4️⃣</span>
+                  <span>Deliver the message</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span className="text-red-400">5️⃣</span>
+                  <span>Clear message before next delivery</span>
+                </li>
               </ul>
             </div>
 
-            <div className="bg-yellow-500/20 p-4 rounded-xl border border-yellow-400/30">
-              <h3 className="font-bold mb-2">⭐ Star Scoring:</h3>
-              <ul className="text-sm space-y-1">
-                <li>• 1 ⭐: Complete all deliveries</li>
-                <li>• 2 ⭐: Complete in under 45 seconds</li>
-                <li>• 3 ⭐: Use 11 or fewer blocks</li>
+            <div className="bg-gradient-to-r from-yellow-500/30 to-orange-500/30 p-5 rounded-2xl border border-yellow-400/40 shadow-lg backdrop-blur-sm hover:scale-105 transition-transform">
+              <h3 className="font-bold mb-3 flex items-center space-x-2">
+                <span className="text-2xl">⭐</span>
+                <span>Star Scoring</span>
+              </h3>
+              <ul className="text-sm space-y-2">
+                <li className="flex items-center space-x-2">
+                  <span className="text-yellow-400">⭐</span>
+                  <span>Complete all deliveries</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span className="text-yellow-400">⭐⭐</span>
+                  <span>Complete in under 45 seconds</span>
+                </li>
+                <li className="flex items-center space-x-2">
+                  <span className="text-yellow-400">⭐⭐⭐</span>
+                  <span>Use 11 or fewer blocks</span>
+                </li>
               </ul>
             </div>
           </div>
 
-          {/* Block Toolbox */}
-          <div className="mt-6">
-            <h3 className="text-lg font-bold text-white mb-4">🧰 Code Blocks</h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
+          {/* Enhanced Block Toolbox */}
+          <div className="mt-8">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <span className="text-2xl">🧰</span>
+              <span>Magic Code Blocks</span>
+            </h3>
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
               {availableBlocks.map((block) => (
                 <div
                   key={block.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, block)}
-                  className={`p-3 bg-gradient-to-r ${block.color} text-white rounded-xl cursor-grab active:cursor-grabbing hover:scale-105 transition-transform shadow-lg`}
+                  className={`p-4 bg-gradient-to-r ${block.color} text-white rounded-2xl cursor-grab active:cursor-grabbing hover:scale-105 hover:shadow-2xl transition-all duration-200 border border-white/20 backdrop-blur-sm`}
                 >
-                  <div className="font-bold text-sm">{block.text}</div>
-                  <div className="text-xs opacity-80 mt-1">{block.description}</div>
+                  <div className="font-bold text-sm mb-1">{block.text}</div>
+                  <div className="text-xs opacity-90 leading-relaxed">{block.description}</div>
+                  <div className="text-xs font-mono bg-black/20 p-2 rounded-lg mt-2 border border-white/10">
+                    {block.code}
+                  </div>
                 </div>
               ))}
             </div>
@@ -755,7 +878,7 @@ const LevelTwoGame = () => {
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="flex-1 border-2 border-dashed border-white/30 rounded-xl p-4 min-h-32 overflow-y-auto"
+            className="flex-1 border-2 border-dashed border-white/30 rounded-xl p-4 min-h-32 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-white/10"
           >
             {codeBlocks.length === 0 ? (
               <div className="flex items-center justify-center h-full text-white/60 text-center">

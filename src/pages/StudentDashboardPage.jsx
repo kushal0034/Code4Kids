@@ -15,7 +15,13 @@ import {
   Target,
   Lock,
   Play,
-  RefreshCw
+  RefreshCw,
+  Save,
+  Edit,
+  Users,
+  Mail,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { progressService } from '../services/progressService';
@@ -27,6 +33,16 @@ const StudentDashboard = () => {
   const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    username: '',
+    email: '',
+    parentName: '',
+    parentEmail: ''
+  });
+  const [profileUpdateLoading, setProfileUpdateLoading] = useState(false);
+  const [profileUpdateSuccess, setProfileUpdateSuccess] = useState(false);
+  const [profileUpdateError, setProfileUpdateError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -102,12 +118,71 @@ const StudentDashboard = () => {
       
       setProgressData(progress);
       
+      // Initialize profile data
+      setProfileData({
+        username: user.username || '',
+        email: user.email || '',
+        parentName: user.parentName || '',
+        parentEmail: user.parentEmail || ''
+      });
+      
     } catch (err) {
       console.error('Error loading user data:', err);
       setError(`Failed to load user data: ${err.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleProfileUpdate = async () => {
+    if (!userData) return;
+    
+    setProfileUpdateLoading(true);
+    setProfileUpdateError('');
+    setProfileUpdateSuccess(false);
+    
+    try {
+      // Update user profile in Firebase
+      await progressService.updateUserProfile(userData.uid, {
+        username: profileData.username,
+        email: profileData.email,
+        parentName: profileData.parentName,
+        parentEmail: profileData.parentEmail
+      });
+      
+      // Update local user data
+      const updatedUserData = {
+        ...userData,
+        username: profileData.username,
+        email: profileData.email,
+        parentName: profileData.parentName,
+        parentEmail: profileData.parentEmail
+      };
+      
+      setUserData(updatedUserData);
+      sessionStorage.setItem('user', JSON.stringify(updatedUserData));
+      
+      setProfileUpdateSuccess(true);
+      setIsEditingProfile(false);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setProfileUpdateSuccess(false);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setProfileUpdateError('Failed to update profile. Please try again.');
+    } finally {
+      setProfileUpdateLoading(false);
+    }
+  };
+
+  const handleProfileInputChange = (field, value) => {
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const sidebarItems = [
@@ -268,15 +343,7 @@ const StudentDashboard = () => {
   };
 
   const getAchievements = () => {
-    const allAchievements = [
-      { id: 'first-level', name: 'First Steps', description: 'Complete your first level', icon: '🎯' },
-      { id: 'perfect-score', name: 'Perfect Score', description: 'Get 3 stars on a level', icon: '⭐' },
-      { id: 'world-champion', name: 'World Champion', description: 'Complete an entire world', icon: '🏆' },
-      { id: 'code-master', name: 'Code Master', description: 'Complete all levels', icon: '🧙‍♂️' },
-      { id: 'speed-runner', name: 'Speed Runner', description: 'Complete a level in under 60 seconds', icon: '⚡' },
-      { id: 'problem-solver', name: 'Problem Solver', description: 'Complete 5 levels', icon: '🧩' }
-    ];
-
+    const allAchievements = progressService.getAllAchievements();
     const earnedAchievements = progressData?.achievements || [];
     const earnedIds = Array.isArray(earnedAchievements) 
       ? earnedAchievements.map(achievement => achievement.id || achievement)
@@ -284,7 +351,8 @@ const StudentDashboard = () => {
 
     return allAchievements.map(achievement => ({
       ...achievement,
-      earned: earnedIds.includes(achievement.id)
+      earned: earnedIds.includes(achievement.id),
+      earnedAt: earnedAchievements.find(earned => earned.id === achievement.id)?.earnedAt
     }));
   };
 
@@ -657,23 +725,75 @@ const StudentDashboard = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {achievements.map((achievement, index) => (
-                  <div key={index} className={`p-6 rounded-3xl border transition-all duration-300 ${
-                    achievement.earned 
-                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30' 
-                      : 'bg-white/5 border-white/10'
-                  }`}>
-                    <div className="text-center">
-                      <div className="text-3xl mb-2">{achievement.icon}</div>
-                      <h3 className={`font-bold mb-1 ${achievement.earned ? 'text-green-300' : 'text-white/60'}`}>
-                        {achievement.name}
-                      </h3>
-                      <p className={`text-xs ${achievement.earned ? 'text-green-200' : 'text-white/40'}`}>
-                        {achievement.description}
-                      </p>
+                {achievements.map((achievement, index) => {
+                  const getRarityColor = (rarity, earned) => {
+                    if (!earned) return 'bg-white/5 border-white/10';
+                    switch(rarity) {
+                      case 'common': return 'bg-gradient-to-r from-gray-500/20 to-slate-500/20 border-gray-400/30';
+                      case 'uncommon': return 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30';
+                      case 'rare': return 'bg-gradient-to-r from-blue-500/20 to-indigo-500/20 border-blue-400/30';
+                      case 'legendary': return 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-400/30';
+                      default: return 'bg-white/5 border-white/10';
+                    }
+                  };
+
+                  const getRarityTextColor = (rarity, earned) => {
+                    if (!earned) return 'text-white/60';
+                    switch(rarity) {
+                      case 'common': return 'text-gray-300';
+                      case 'uncommon': return 'text-green-300';
+                      case 'rare': return 'text-blue-300';
+                      case 'legendary': return 'text-purple-300';
+                      default: return 'text-white/60';
+                    }
+                  };
+
+                  const getRarityBadge = (rarity) => {
+                    const colors = {
+                      common: 'bg-gray-500/20 text-gray-300',
+                      uncommon: 'bg-green-500/20 text-green-300',
+                      rare: 'bg-blue-500/20 text-blue-300',
+                      legendary: 'bg-purple-500/20 text-purple-300'
+                    };
+                    return colors[rarity] || colors.common;
+                  };
+
+                  return (
+                    <div key={index} className={`p-6 rounded-3xl border transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
+                      getRarityColor(achievement.rarity, achievement.earned)
+                    }`}>
+                      <div className="text-center">
+                        <div className="relative">
+                          <div className={`text-4xl mb-3 ${achievement.earned ? 'animate-pulse' : 'grayscale'}`}>
+                            {achievement.icon}
+                          </div>
+                          <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mb-2 ${
+                            getRarityBadge(achievement.rarity)
+                          }`}>
+                            {achievement.rarity.charAt(0).toUpperCase() + achievement.rarity.slice(1)}
+                          </div>
+                        </div>
+                        <h3 className={`font-bold mb-2 ${getRarityTextColor(achievement.rarity, achievement.earned)}`}>
+                          {achievement.name}
+                        </h3>
+                        <p className={`text-sm mb-3 ${achievement.earned ? 'text-white/80' : 'text-white/40'}`}>
+                          {achievement.description}
+                        </p>
+                        {achievement.earned && achievement.earnedAt && (
+                          <div className="text-xs text-white/60">
+                            Earned: {new Date(achievement.earnedAt).toLocaleDateString()}
+                          </div>
+                        )}
+                        {achievement.earned && (
+                          <div className="mt-3 flex items-center justify-center space-x-1">
+                            <CheckCircle className="w-4 h-4 text-green-400" />
+                            <span className="text-xs text-green-400 font-medium">Unlocked</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -683,44 +803,191 @@ const StudentDashboard = () => {
             <div className="space-y-6">
               <h2 className="text-3xl font-bold text-white">Settings</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <User className="w-6 h-6 text-blue-400" />
-                    <h3 className="text-xl font-bold text-white">Profile</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Profile Information */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <User className="w-6 h-6 text-blue-400" />
+                      <h3 className="text-xl font-bold text-white">Profile Information</h3>
+                    </div>
+                    <button
+                      onClick={() => setIsEditingProfile(!isEditingProfile)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                      <span>{isEditingProfile ? 'Cancel' : 'Edit Profile'}</span>
+                    </button>
                   </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-white/60 text-sm">Username</label>
-                      <div className="text-white font-medium">{userData?.username}</div>
+
+                  {profileUpdateSuccess && (
+                    <div className="mb-4 p-3 bg-green-500/20 border border-green-400/30 rounded-lg flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                      <span className="text-green-300">Profile updated successfully!</span>
                     </div>
-                    <div>
-                      <label className="text-white/60 text-sm">Email</label>
-                      <div className="text-white font-medium">{userData?.email}</div>
+                  )}
+
+                  {profileUpdateError && (
+                    <div className="mb-4 p-3 bg-red-500/20 border border-red-400/30 rounded-lg flex items-center space-x-2">
+                      <AlertCircle className="w-5 h-5 text-red-400" />
+                      <span className="text-red-300">{profileUpdateError}</span>
                     </div>
-                    <div>
-                      <label className="text-white/60 text-sm">Rank</label>
-                      <div className="text-white font-medium">{stats.rank}</div>
+                  )}
+
+                  <div className="space-y-4">
+                    {/* Student Information */}
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                      <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                        <span>🧙‍♂️</span>
+                        <span>Student Information</span>
+                      </h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-white/80 text-sm font-medium mb-2">Username</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={profileData.username}
+                              onChange={(e) => handleProfileInputChange('username', e.target.value)}
+                              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400 transition-colors"
+                              placeholder="Enter username"
+                            />
+                          ) : (
+                            <div className="text-white font-medium px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                              {userData?.username || 'Not set'}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-white/80 text-sm font-medium mb-2">Email</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="email"
+                              value={profileData.email}
+                              onChange={(e) => handleProfileInputChange('email', e.target.value)}
+                              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400 transition-colors"
+                              placeholder="Enter email"
+                            />
+                          ) : (
+                            <div className="text-white font-medium px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                              {userData?.email || 'Not set'}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-white/80 text-sm font-medium mb-2">Rank</label>
+                          <div className="text-white font-medium px-4 py-2 bg-gradient-to-r from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-400/30">
+                            <span className="flex items-center space-x-2">
+                              <Crown className="w-4 h-4 text-yellow-400" />
+                              <span>{stats.rank}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Parent Information */}
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                      <h4 className="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                        <Users className="w-5 h-5 text-purple-400" />
+                        <span>Parent Information</span>
+                      </h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-white/80 text-sm font-medium mb-2">Parent Name</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="text"
+                              value={profileData.parentName}
+                              onChange={(e) => handleProfileInputChange('parentName', e.target.value)}
+                              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-purple-400 transition-colors"
+                              placeholder="Enter parent/guardian name"
+                            />
+                          ) : (
+                            <div className="text-white font-medium px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                              {userData?.parentName || 'Not set'}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-white/80 text-sm font-medium mb-2">Parent Email</label>
+                          {isEditingProfile ? (
+                            <input
+                              type="email"
+                              value={profileData.parentEmail}
+                              onChange={(e) => handleProfileInputChange('parentEmail', e.target.value)}
+                              className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-purple-400 transition-colors"
+                              placeholder="Enter parent/guardian email"
+                            />
+                          ) : (
+                            <div className="text-white font-medium px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                              {userData?.parentEmail || 'Not set'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Update Button */}
+                    {isEditingProfile && (
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={handleProfileUpdate}
+                          disabled={profileUpdateLoading}
+                          className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {profileUpdateLoading ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <>
+                              <Save className="w-5 h-5" />
+                              <span>Update Profile</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditingProfile(false);
+                            setProfileUpdateError('');
+                            setProfileData({
+                              username: userData?.username || '',
+                              email: userData?.email || '',
+                              parentName: userData?.parentName || '',
+                              parentEmail: userData?.parentEmail || ''
+                            });
+                          }}
+                          className="px-6 py-3 bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                  <div className="flex items-center space-x-3 mb-4">
+                {/* Sound Settings */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
+                  <div className="flex items-center space-x-3 mb-6">
                     <Volume2 className="w-6 h-6 text-green-400" />
                     <h3 className="text-xl font-bold text-white">Sound Settings</h3>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <span className="text-white">Sound Effects</span>
-                      <button className="w-12 h-6 bg-green-500 rounded-full relative">
-                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
+                      <div>
+                        <span className="text-white font-medium">Sound Effects</span>
+                        <p className="text-white/60 text-sm">Game sounds and feedback</p>
+                      </div>
+                      <button className="w-12 h-6 bg-green-500 rounded-full relative transition-colors">
+                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5 transition-transform"></div>
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-white">Background Music</span>
-                      <button className="w-12 h-6 bg-gray-500 rounded-full relative">
-                        <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
+                      <div>
+                        <span className="text-white font-medium">Background Music</span>
+                        <p className="text-white/60 text-sm">Ambient music during gameplay</p>
+                      </div>
+                      <button className="w-12 h-6 bg-gray-500 rounded-full relative transition-colors">
+                        <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5 transition-transform"></div>
                       </button>
                     </div>
                   </div>

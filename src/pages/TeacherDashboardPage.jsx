@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Sparkles, 
   Home, 
@@ -27,11 +28,6 @@ const TeacherDashboardPage = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const Link = ({ to, children, className, onClick }) => (
-    <a href={to} className={className} onClick={onClick}>
-      {children}
-    </a>
-  );
 
   const sidebarItems = [
     { id: 'logo', type: 'logo' },

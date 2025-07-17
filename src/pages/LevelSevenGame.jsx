@@ -382,7 +382,7 @@ const LevelSevenGame = () => {
             <div className="bg-white/20 px-4 py-2 rounded-lg">
               <span className="text-white">Bridge Progress: {crossedPlanks.length}/{totalPlanks}</span>
             </div>
-            <Link to="/dashboard" className="text-white hover:text-yellow-300 transition-colors">
+            <Link to="/student-dashboard" className="text-white hover:text-yellow-300 transition-colors">
               <Home className="w-5 h-5" />
             </Link>
           </div>
@@ -671,7 +671,7 @@ const LevelSevenGame = () => {
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="flex-1 border-2 border-dashed border-white/30 rounded-xl p-4 min-h-32 overflow-y-auto"
+            className="flex-1 border-2 border-dashed border-white/30 rounded-xl p-4 min-h-32 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-white/10"
           >
             {codeBlocks.length === 0 ? (
               <div className="flex items-center justify-center h-full text-white/60 text-center">

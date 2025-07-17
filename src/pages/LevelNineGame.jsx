@@ -498,7 +498,7 @@ const LevelNineGame = () => {
             <div className="bg-red-600/30 px-4 py-2 rounded-lg border border-red-500/50">
               <span className="text-white">Round: {battleRound}/5 | Spells: {spellCount}</span>
             </div>
-            <Link to="/dashboard" className="text-white hover:text-yellow-300 transition-colors">
+            <Link to="/student-dashboard" className="text-white hover:text-yellow-300 transition-colors">
               <Home className="w-5 h-5" />
             </Link>
           </div>
@@ -971,7 +971,7 @@ const LevelNineGame = () => {
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            className="flex-1 border-2 border-dashed border-red-500/30 rounded-xl p-4 min-h-32 max-h-64 overflow-y-auto bg-black/10"
+            className="flex-1 border-2 border-dashed border-red-500/30 rounded-xl p-4 min-h-32 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-white/10 bg-black/10"
           >
             {codeBlocks.length === 0 ? (
               <div className="flex items-center justify-center h-32 text-white/60 text-center">
