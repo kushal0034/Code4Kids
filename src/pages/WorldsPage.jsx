@@ -73,12 +73,11 @@ const WorldsPage = () => {
 
       const user = JSON.parse(userString);
 
-      // Load user progress from Firestore
-      const progressRef = doc(db, 'userProgress', user.uid);
-      const progressSnap = await getDoc(progressRef);
-
-      if (progressSnap.exists()) {
-        setUserProgress(progressSnap.data());
+      // Load user progress from Firestore with migration check
+      const progressData = await progressService.getDashboardData(user.uid);
+      
+      if (progressData) {
+        setUserProgress(progressData);
       } else {
         // If no progress exists, initialize it
         const initialProgress = await progressService.initializeUserProgress(user.uid);

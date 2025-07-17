@@ -136,8 +136,15 @@ class ProgressService {
         // Check for new achievements
         const newAchievements = this.checkAchievements(progressData, levelId, stars);
         
-        // Update world progress
-        const worldProgress = this.calculateWorldProgress(progressData.worlds[world]);
+        // Update world progress - calculate AFTER updating the level data
+        const updatedWorldData = {
+          ...progressData.worlds[world],
+          levels: {
+            ...progressData.worlds[world].levels,
+            [level]: updatedLevelData
+          }
+        };
+        const worldProgress = this.calculateWorldProgress(updatedWorldData);
         
         // Prepare update data
         const updateData = {
@@ -165,6 +172,12 @@ class ProgressService {
             const nextWorld = this.getNextWorld(world);
             if (nextWorld) {
               updateData[`worlds.${nextWorld}.unlocked`] = true;
+              
+              // Also unlock the first level of the next world
+              const firstLevelInNextWorld = this.getFirstLevelInWorld(nextWorld);
+              if (firstLevelInNextWorld) {
+                updateData[`worlds.${nextWorld}.levels.${firstLevelInNextWorld}.unlocked`] = true;
+              }
             }
           }
         } else {
@@ -286,6 +299,18 @@ class ProgressService {
     
     const currentIndex = levelsInWorld.indexOf(currentLevel);
     return currentIndex < levelsInWorld.length - 1 ? levelsInWorld[currentIndex + 1] : null;
+  }
+
+  // Get first level in a world
+  getFirstLevelInWorld(world) {
+    const levelOrder = {
+      village: ['level1', 'level2', 'level3'],
+      forest: ['level4', 'level5', 'level6'],
+      mountain: ['level7', 'level8', 'level9']
+    };
+    
+    const levelsInWorld = levelOrder[world];
+    return levelsInWorld ? levelsInWorld[0] : null;
   }
 
   // Check for new achievements
@@ -672,6 +697,14 @@ class ProgressService {
         return migratedData;
       }
 
+      // Check for world unlocking based on completion
+      const needsWorldUnlocking = this.needsWorldUnlockingMigration(progressData);
+      if (needsWorldUnlocking) {
+        console.log('Migrating user progress to unlock completed worlds');
+        const migratedData = await this.migrateWorldUnlocking(userId, progressData);
+        return migratedData;
+      }
+
       return progressData;
     } catch (error) {
       console.error('Error getting dashboard data:', error);
@@ -696,6 +729,69 @@ class ProgressService {
       }
     }
     return false;
+  }
+
+  // Check if worlds need to be unlocked based on completion
+  needsWorldUnlockingMigration(progressData) {
+    if (!progressData.worlds) return false;
+    
+    // Check if village world is completed but forest world is not unlocked
+    if (progressData.worlds.village) {
+      const villageProgress = this.calculateWorldProgress(progressData.worlds.village);
+      if (villageProgress === 100 && progressData.worlds.forest && !progressData.worlds.forest.unlocked) {
+        return true;
+      }
+    }
+    
+    // Check if forest world is completed but mountain world is not unlocked
+    if (progressData.worlds.forest) {
+      const forestProgress = this.calculateWorldProgress(progressData.worlds.forest);
+      if (forestProgress === 100 && progressData.worlds.mountain && !progressData.worlds.mountain.unlocked) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Migrate world unlocking based on completion
+  async migrateWorldUnlocking(userId, progressData) {
+    try {
+      const updateData = {};
+      
+      // Check village completion -> unlock forest
+      if (progressData.worlds.village) {
+        const villageProgress = this.calculateWorldProgress(progressData.worlds.village);
+        if (villageProgress === 100 && progressData.worlds.forest && !progressData.worlds.forest.unlocked) {
+          updateData['worlds.forest.unlocked'] = true;
+          updateData['worlds.forest.levels.level4.unlocked'] = true;
+          console.log('Unlocking forest world based on village completion');
+        }
+      }
+      
+      // Check forest completion -> unlock mountain
+      if (progressData.worlds.forest) {
+        const forestProgress = this.calculateWorldProgress(progressData.worlds.forest);
+        if (forestProgress === 100 && progressData.worlds.mountain && !progressData.worlds.mountain.unlocked) {
+          updateData['worlds.mountain.unlocked'] = true;
+          updateData['worlds.mountain.levels.level7.unlocked'] = true;
+          console.log('Unlocking mountain world based on forest completion');
+        }
+      }
+      
+      // Update the database if there are changes
+      if (Object.keys(updateData).length > 0) {
+        const progressRef = doc(db, 'userProgress', userId);
+        await updateDoc(progressRef, updateData);
+        console.log('World unlocking migration completed:', updateData);
+      }
+      
+      // Return the updated progress data
+      return await this.getUserProgress(userId);
+    } catch (error) {
+      console.error('Error migrating world unlocking:', error);
+      return progressData;
+    }
   }
 
   // Migrate progress data to add unlocked properties

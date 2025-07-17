@@ -147,6 +147,9 @@ const StudentDashboard = () => {
       
       console.log('Loaded progress data:', progress);
       console.log('Village levels:', progress?.worlds?.village?.levels);
+      console.log('Forest world:', progress?.worlds?.forest);
+      console.log('Mountain world:', progress?.worlds?.mountain);
+      console.log('Level 7 unlock status:', progress?.worlds?.mountain?.levels?.level7?.unlocked);
       console.log('Achievements in progress:', progress?.achievements);
       
       setProgressData(progress);
@@ -345,7 +348,7 @@ const StudentDashboard = () => {
             name: "Bridge Crossing", 
             completed: progressData.worlds.mountain?.levels?.level7?.completed || false, 
             stars: progressData.worlds.mountain?.levels?.level7?.stars || 0,
-            unlocked: progressData.worlds.mountain?.unlocked || false
+            unlocked: progressData.worlds.mountain?.levels?.level7?.unlocked || progressData.worlds.mountain?.unlocked || false
           },
           { 
             id: 8, 

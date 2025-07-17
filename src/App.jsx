@@ -20,11 +20,13 @@ import LevelNineGame from './pages/LevelNineGame'
 import ProtectedRoute from "./components/ProtectedRoute"
 import DatabaseTest from "./components/DatabaseTest"
 import DebugProgressFix from "./components/DebugProgressFix"
+import FirebaseDataInspector from "./components/FirebaseDataInspector"
 
 function App() {
   // Show debug tools in development or when enabled
   const showDatabaseTest = import.meta.env.DEV || localStorage.getItem('showDatabaseTest') === 'true';
   const showDebugFix = import.meta.env.DEV || localStorage.getItem('showDebugFix') === 'true';
+  const showDataInspector = import.meta.env.DEV || localStorage.getItem('showDataInspector') === 'true';
 
   return (
     <>
@@ -144,9 +146,10 @@ function App() {
         />
       </Routes>
       
-      {/* Debug Tools - only shows in development or when explicitly enabled */}
-      {/* {showDatabaseTest && <DatabaseTest />}
-      {showDebugFix && <div data-debug-fix><DebugProgressFix /></div>} */}
+      {/* Debug Tools - only shows in development or when explicitly enabled
+      {showDatabaseTest && <DatabaseTest />}
+      {showDebugFix && <div data-debug-fix><DebugProgressFix /></div>}
+      {showDataInspector && <FirebaseDataInspector />} */}
     </>
   )
 }

@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, Flame, Zap, Shield, Heart } from 'lucide-react';
+import { Sparkles, Play, RotateCcw, CheckCircle, Star, Home, ArrowLeft, Flame, Zap, Shield, Heart, Trophy, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { progressService } from '../services/progressService';
 
 const LevelNineGame = () => {
+  const navigate = useNavigate();
   const [draggedBlock, setDraggedBlock] = useState(null);
   const [codeBlocks, setCodeBlocks] = useState([]);
   const [gameState, setGameState] = useState('playing'); // 'playing', 'success', 'error'
@@ -18,6 +21,12 @@ const LevelNineGame = () => {
   const [dragonAttacking, setDragonAttacking] = useState(false);
   const [currentAction, setCurrentAction] = useState('');
   const [battleLog, setBattleLog] = useState([]);
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [levelResults, setLevelResults] = useState(null);
+  const [user, setUser] = useState(null);
 
   const spellTypes = {
     'fire-bolt': { name: 'Fire Bolt', damage: 15, color: 'text-red-400', icon: '🔥', effect: 'burn' },
@@ -155,6 +164,85 @@ const LevelNineGame = () => {
     }
   }, [dragonAttacking]);
 
+  // Get current user on component mount
+  useEffect(() => {
+    const userData = progressService.getCurrentUser();
+    if (!userData) {
+      navigate('/login');
+    } else {
+      setUser(userData);
+    }
+  }, [navigate]);
+
+  // Calculate stars based on time and code efficiency
+  const calculateStars = (timeSpent, codeBlockCount) => {
+    let stars = 1; // Base star for completion
+    
+    // Time bonus (under 180 seconds = extra star)
+    if (timeSpent < 180000) {
+      stars++;
+    }
+    
+    // Efficiency bonus (under 12 blocks = extra star)
+    if (codeBlockCount <= 11) {
+      stars++;
+    }
+    
+    return Math.min(stars, 3);
+  };
+
+  // Save progress to database
+  const saveProgress = async (success, timeSpent = 0) => {
+    if (!user) return;
+
+    setIsLoading(true);
+    
+    try {
+      const stars = success ? calculateStars(timeSpent, codeBlocks.length) : 0;
+      
+      const result = await progressService.recordLevelAttempt(
+        9, // Level 9 - Final level!
+        success,
+        stars,
+        timeSpent,
+        codeBlocks
+      );
+
+      if (success) {
+        setLevelResults({
+          stars,
+          timeSpent,
+          codeBlocks: codeBlocks.length,
+          newAchievements: result.newAchievements || [],
+          newRank: result.newRank
+        });
+        setShowResults(true);
+      }
+    } catch (error) {
+      console.error('Error saving progress:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Format time display
+  const formatTime = (ms) => {
+    const seconds = Math.floor(ms / 1000);
+    return `${seconds}s`;
+  };
+
+  // Star display component
+  const StarDisplay = ({ count, size = "w-6 h-6" }) => (
+    <div className="flex items-center space-x-1">
+      {[...Array(3)].map((_, i) => (
+        <Star
+          key={i}
+          className={`${size} ${i < count ? 'text-yellow-400 fill-current' : 'text-gray-400'}`}
+        />
+      ))}
+    </div>
+  );
+
   const Link = ({ to, children, className }) => (
     <a href={to} className={className}>
       {children}
@@ -231,6 +319,10 @@ const LevelNineGame = () => {
       setGameMessage('Add some code blocks to start the epic battle!');
       return;
     }
+
+    // Start timing
+    const startTime = Date.now();
+    setStartTime(startTime);
     
     setIsRunning(true);
     setGameState('playing');
@@ -393,12 +485,22 @@ const LevelNineGame = () => {
         case 'action':
           if (block.id.includes('victory-celebration')) {
             if (currentDragonHealth <= 0) {
+              const endTime = Date.now();
+              setEndTime(endTime);
+              const timeSpent = endTime - startTime;
+              
               setGameState('success');
               setGameMessage('🏆 LEGENDARY VICTORY! The ancient dragon has been vanquished!');
               addBattleLog('🎉 EPIC VICTORY ACHIEVED!', 'victory');
+              
+              // Save progress to database
+              await saveProgress(true, timeSpent);
+              return;
             } else {
               setGameMessage(`❌ Dragon still lives with ${currentDragonHealth} HP! Battle continues!`);
               setGameState('error');
+              await saveProgress(false);
+              return;
             }
           }
           break;
@@ -426,14 +528,21 @@ const LevelNineGame = () => {
     setCurrentAction('');
     
     if (currentDragonHealth <= 0) {
+      const endTime = Date.now();
+      setEndTime(endTime);
+      const timeSpent = endTime - startTime;
+      
       setGameState('success');
       addBattleLog('🏆 ULTIMATE VICTORY!', 'victory');
+      await saveProgress(true, timeSpent);
     } else if (currentWizardHealth <= 0) {
       setGameState('error');
       addBattleLog('💀 Wizard defeated...', 'defeat');
+      await saveProgress(false);
     } else {
       setGameState('error');
       setGameMessage(`Battle incomplete! Dragon: ${currentDragonHealth}/100 HP, Wizard: ${currentWizardHealth}/100 HP`);
+      await saveProgress(false);
     }
   };
 
@@ -1072,6 +1181,108 @@ const LevelNineGame = () => {
           </div>
         </div>
       </div>
+
+      {/* Results Modal */}
+      {showResults && levelResults && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-red-900 to-orange-900 rounded-3xl p-8 max-w-md w-full border-2 border-yellow-400/50 shadow-2xl">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🏆</div>
+              <h2 className="text-3xl font-bold text-white mb-2">LEGENDARY VICTORY!</h2>
+              <p className="text-orange-200 mb-6">Dragon Slayer - Master Wizard!</p>
+              
+              {/* Stars */}
+              <div className="mb-6">
+                <div className="text-white font-bold mb-2">Epic Performance:</div>
+                <StarDisplay count={levelResults.stars} size="w-8 h-8" />
+              </div>
+              
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-center space-x-2 text-blue-300">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">Battle Time</span>
+                  </div>
+                  <div className="text-white font-bold">{formatTime(levelResults.timeSpent)}</div>
+                </div>
+                <div className="bg-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-center space-x-2 text-purple-300">
+                    <Sparkles className="w-4 h-4" />
+                    <span className="text-sm">Code Blocks</span>
+                  </div>
+                  <div className="text-white font-bold">{levelResults.codeBlocks}</div>
+                </div>
+              </div>
+              
+              {/* Achievements */}
+              {levelResults.newAchievements && levelResults.newAchievements.length > 0 && (
+                <div className="mb-6">
+                  <div className="text-white font-bold mb-2">🏆 New Achievements:</div>
+                  <div className="space-y-2">
+                    {levelResults.newAchievements.map((achievement, index) => (
+                      <div key={index} className="bg-yellow-500/20 p-3 rounded-xl border border-yellow-400/30">
+                        <div className="text-yellow-300 font-bold text-sm">{achievement.name}</div>
+                        <div className="text-yellow-200 text-xs">{achievement.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Rank Up */}
+              {levelResults.newRank && (
+                <div className="mb-6">
+                  <div className="bg-purple-500/20 p-4 rounded-xl border border-purple-400/30">
+                    <div className="flex items-center justify-center space-x-2 text-purple-300 mb-2">
+                      <Trophy className="w-5 h-5" />
+                      <span className="font-bold">FINAL RANK ACHIEVED!</span>
+                    </div>
+                    <div className="text-white font-bold text-lg">{levelResults.newRank}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Final Level Completion Message */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-gold-500/20 to-yellow-500/20 rounded-xl border border-yellow-400/30">
+                <div className="text-yellow-300 font-bold text-lg mb-2">🎓 CODING JOURNEY COMPLETE!</div>
+                <div className="text-yellow-200 text-sm">
+                  Congratulations! You've mastered all programming concepts from variables to nested loops!
+                </div>
+              </div>
+              
+              {/* Buttons */}
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    setShowResults(false);
+                    resetGame();
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-xl font-bold hover:scale-105 transition-transform"
+                >
+                  Battle Again
+                </button>
+                <button
+                  onClick={() => navigate('/worlds')}
+                  className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-bold hover:scale-105 transition-transform"
+                >
+                  View Journey
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-white">Saving legendary victory...</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
