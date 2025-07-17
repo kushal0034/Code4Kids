@@ -18,6 +18,7 @@ import {
   Lock,
   Play
 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { progressService } from '../services/progressService';
 
 const StudentDashboard = () => {
@@ -27,6 +28,7 @@ const StudentDashboard = () => {
   const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadUserData();
@@ -38,7 +40,7 @@ const StudentDashboard = () => {
       const user = progressService.getCurrentUser();
       
       if (!user) {
-        window.location.href = '/login';
+        navigate('/login');
         return;
       }
 
@@ -61,30 +63,68 @@ const StudentDashboard = () => {
     }
   };
 
-  const Link = ({ to, children, className, onClick }) => (
-    <a href={to} className={className} onClick={onClick}>
-      {children}
-    </a>
-  );
-
   const sidebarItems = [
     { id: 'logo', type: 'logo' },
     { id: 'dashboard', icon: Home, label: 'Dashboard', path: '/student-dashboard' },
     { id: 'adventure', icon: Map, label: 'Adventure', path: '/worlds' },
     { id: 'achievements', icon: Trophy, label: 'Achievements', path: '/achievements' },
-    { id: 'settings', icon: Settings, label: 'Settings', path: '/student-settings' },
+    { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
     { id: 'logout', icon: LogOut, label: 'Logout', path: '/logout', type: 'logout' }
   ];
 
   const settingsSubItems = [
-    { id: 'profile', icon: User, label: 'My Wizard', path: '/profile' },
-    { id: 'progress', icon: BarChart3, label: 'Progress', path: '/user-stats' },
-    { id: 'sound', icon: Volume2, label: 'Sound Settings', path: '/sound' }
+    { id: 'profile', icon: User, label: 'Profile', path: '/profile' },
+    { id: 'progress', icon: BarChart3, label: 'Progress', path: '/progress' },
+    { id: 'sound', icon: Volume2, label: 'Sound', path: '/sound' }
   ];
 
-  // Convert database progress to display format
   const getWorldsData = () => {
-    if (!progressData?.worlds) return [];
+    if (!progressData || !progressData.worlds) {
+      return [
+        {
+          id: 1,
+          name: "Village Basics",
+          concept: "Variables",
+          icon: "🏘️",
+          color: "from-green-400 to-emerald-600",
+          progress: 0,
+          unlocked: true,
+          levels: [
+            { id: 1, name: "Apple Counting", completed: false, stars: 0, unlocked: true },
+            { id: 2, name: "Message Delivery", completed: false, stars: 0, unlocked: false },
+            { id: 3, name: "Potion Making", completed: false, stars: 0, unlocked: false }
+          ]
+        },
+        {
+          id: 2,
+          name: "Forest Decisions",
+          concept: "If/Else",
+          icon: "🌲",
+          color: "from-emerald-500 to-teal-700",
+          progress: 0,
+          unlocked: false,
+          levels: [
+            { id: 4, name: "Weather Paths", completed: false, stars: 0, unlocked: false },
+            { id: 5, name: "Monster Spells", completed: false, stars: 0, unlocked: false },
+            { id: 6, name: "Villager Problems", completed: false, stars: 0, unlocked: false }
+          ]
+        },
+        {
+          id: 3,
+          name: "Mountain Challenges",
+          concept: "Loops",
+          icon: "⛰️",
+          color: "from-blue-500 to-indigo-600",
+          progress: 0,
+          unlocked: false,
+          levels: [
+            { id: 7, name: "Bridge Crossing", completed: false, stars: 0, unlocked: false },
+            { id: 8, name: "Rock Clearing", completed: false, stars: 0, unlocked: false },
+            { id: 9, name: "Dragon Battle", completed: false, stars: 0, unlocked: false }
+          ]
+        }
+      ];
+    }
 
     return [
       {
@@ -94,14 +134,14 @@ const StudentDashboard = () => {
         icon: "🏘️",
         color: "from-green-400 to-emerald-600",
         progress: progressData.worlds.village?.progress || 0,
-        unlocked: progressData.worlds.village?.unlocked || false,
+        unlocked: progressData.worlds.village?.unlocked || true,
         levels: [
           { 
             id: 1, 
-            name: "Apple Collection", 
+            name: "Apple Counting", 
             completed: progressData.worlds.village?.levels?.level1?.completed || false, 
             stars: progressData.worlds.village?.levels?.level1?.stars || 0,
-            unlocked: true 
+            unlocked: progressData.worlds.village?.unlocked || true
           },
           { 
             id: 2, 
@@ -112,7 +152,7 @@ const StudentDashboard = () => {
           },
           { 
             id: 3, 
-            name: "Potion Ingredients", 
+            name: "Potion Making", 
             completed: progressData.worlds.village?.levels?.level3?.completed || false, 
             stars: progressData.worlds.village?.levels?.level3?.stars || 0,
             unlocked: progressData.worlds.village?.levels?.level2?.completed || false
@@ -188,19 +228,14 @@ const StudentDashboard = () => {
 
   const getAchievements = () => {
     const allAchievements = [
-      { id: 'first_steps', name: "First Steps", icon: "🌟", description: "Complete your first level" },
-      { id: 'apple_master', name: "Apple Master", icon: "🍎", description: "Perfect score in Apple Collection" },
-      { id: 'message_master', name: "Message Master", icon: "📮", description: "Successfully deliver all village messages" },
-      { id: 'delivery_expert', name: "Delivery Expert", icon: "🚀", description: "Perfect score in Message Delivery" },
-      { id: 'string_wizard', name: "String Wizard", icon: "🔤", description: "Master string variables in Village levels" },
-      { id: 'speedy_messenger', name: "Speedy Messenger", icon: "⚡", description: "Deliver messages in record time" },
-      { id: 'variable_wizard', name: "Variable Wizard", icon: "🧙‍♂️", description: "Master all Variable levels" },
-      { id: 'decision_maker', name: "Decision Maker", icon: "🌲", description: "Complete all Forest Decision levels" },
-      { id: 'loop_master', name: "Loop Master", icon: "⛰️", description: "Complete all Mountain Challenge levels" },
-      { id: 'perfect_student', name: "Perfect Student", icon: "👑", description: "Get 3 stars on all levels" }
+      { id: 'first-level', name: 'First Steps', description: 'Complete your first level', icon: '🎯' },
+      { id: 'perfect-score', name: 'Perfect Score', description: 'Get 3 stars on a level', icon: '⭐' },
+      { id: 'world-champion', name: 'World Champion', description: 'Complete an entire world', icon: '🏆' },
+      { id: 'code-master', name: 'Code Master', description: 'Complete all levels', icon: '🧙‍♂️' },
+      { id: 'speed-runner', name: 'Speed Runner', description: 'Complete a level in under 60 seconds', icon: '⚡' },
+      { id: 'problem-solver', name: 'Problem Solver', description: 'Complete 5 levels', icon: '🧩' }
     ];
 
-    // Safely check achievements - handle both array and non-array cases
     const earnedAchievements = progressData?.achievements || [];
     const earnedIds = Array.isArray(earnedAchievements) 
       ? earnedAchievements.map(achievement => achievement.id || achievement)
@@ -227,8 +262,7 @@ const StudentDashboard = () => {
     return {
       totalLevels: 9,
       completedLevels: progressData.totalLevelsCompleted || 0,
-      totalStars: 27,
-      earnedStars: progressData.totalStars || 0,
+      totalStars: progressData.totalStars || 0,
       currentStreak: progressData.currentStreak || 0,
       rank: progressData.rank || "Novice Wizard"
     };
@@ -236,7 +270,7 @@ const StudentDashboard = () => {
 
   const handleLogout = () => {
     sessionStorage.clear();
-    window.location.href = '/login';
+    navigate('/login');
   };
 
   const getLevelPath = (levelId) => {
@@ -287,14 +321,14 @@ const StudentDashboard = () => {
   const stats = getStats();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
       {/* Sidebar */}
       <div className={`fixed left-0 top-0 h-full bg-slate-900/90 backdrop-blur-xl border-r border-white/10 transition-all duration-300 z-50 ${
         isSidebarOpen ? 'w-64' : 'w-16'
       }`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-white/10">
+          <div className="p-4 border-b border-white/10 flex items-center justify-center">
             <Link to="/" className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-white" />
@@ -331,7 +365,7 @@ const StudentDashboard = () => {
                   key={item.id}
                   onClick={() => {
                     if (item.id === 'adventure') {
-                      window.location.href = '/worlds';
+                      navigate('/worlds');
                     } else {
                       setActiveTab(item.id);
                     }
@@ -420,7 +454,7 @@ const StudentDashboard = () => {
                     </div>
                     <div>
                       <div className="text-2xl font-bold text-white">{stats.completedLevels}</div>
-                      <div className="text-blue-200 text-sm">Levels Complete</div>
+                      <div className="text-green-200 text-sm">Levels Completed</div>
                     </div>
                   </div>
                 </div>
@@ -432,7 +466,7 @@ const StudentDashboard = () => {
                     </div>
                     <div>
                       <div className="text-2xl font-bold text-white">{stats.earnedStars}</div>
-                      <div className="text-blue-200 text-sm">Stars Earned</div>
+                      <div className="text-yellow-200 text-sm">Stars Earned</div>
                     </div>
                   </div>
                 </div>
@@ -444,7 +478,7 @@ const StudentDashboard = () => {
                     </div>
                     <div>
                       <div className="text-2xl font-bold text-white">{stats.currentStreak}</div>
-                      <div className="text-blue-200 text-sm">Day Streak</div>
+                      <div className="text-purple-200 text-sm">Day Streak</div>
                     </div>
                   </div>
                 </div>
@@ -452,38 +486,38 @@ const StudentDashboard = () => {
                 <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-6 border border-white/20">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-2xl flex items-center justify-center">
-                      <Crown className="w-6 h-6 text-white" />
+                      <BookOpen className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <div className="text-lg font-bold text-white">{stats.rank.split(' ')[0]}</div>
-                      <div className="text-blue-200 text-sm">Current Rank</div>
+                      <div className="text-2xl font-bold text-white">{achievements.filter(a => a.earned).length}</div>
+                      <div className="text-blue-200 text-sm">Achievements</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Worlds Grid */}
+              {/* Worlds Progress */}
               <div>
-                <h2 className="text-2xl font-bold text-white mb-6">Your Magical Worlds</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <h2 className="text-2xl font-bold text-white mb-6">Your Coding Worlds</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {worlds.map((world) => (
-                    <div key={world.id} className={`bg-gradient-to-br ${world.color} rounded-3xl p-6 text-white relative overflow-hidden group transition-all duration-300 ${
+                    <div key={world.id} className={`bg-gradient-to-br ${world.color} rounded-3xl p-6 border border-white/20 transition-all duration-300 ${
                       world.unlocked ? 'hover:scale-105 cursor-pointer' : 'opacity-60'
                     }`}>
                       <div className="relative z-10">
                         <div className="flex items-center space-x-3 mb-4">
                           <span className="text-4xl">{world.icon}</span>
                           <div>
-                            <h3 className="text-xl font-bold">{world.name}</h3>
+                            <h3 className="text-xl font-bold text-white">{world.name}</h3>
                             <p className="text-white/80 text-sm">{world.concept}</p>
                           </div>
                           {!world.unlocked && (
-                            <Lock className="w-6 h-6 text-white/60" />
+                            <Lock className="w-6 h-6 text-white/60 ml-auto" />
                           )}
                         </div>
                         
                         <div className="mb-4">
-                          <div className="flex justify-between text-sm mb-2">
+                          <div className="flex justify-between text-sm mb-2 text-white">
                             <span>Progress</span>
                             <span>{world.progress}%</span>
                           </div>
@@ -501,12 +535,12 @@ const StudentDashboard = () => {
                               level.unlocked ? 'hover:bg-white/20 cursor-pointer' : 'opacity-50'
                             }`} onClick={() => {
                               if (level.unlocked) {
-                                window.location.href = getLevelPath(level.id);
+                                navigate(getLevelPath(level.id));
                               }
                             }}>
                               <div className="flex items-center space-x-2">
                                 {!level.unlocked && <Lock className="w-3 h-3 text-white/60" />}
-                                <span className="text-sm">{level.name}</span>
+                                <span className="text-sm text-white">{level.name}</span>
                                 {level.unlocked && (
                                   <Play className="w-3 h-3 text-white/60" />
                                 )}
@@ -522,18 +556,7 @@ const StudentDashboard = () => {
                             </div>
                           ))}
                         </div>
-
-                        {world.unlocked && (
-                          <button 
-                            onClick={() => window.location.href = '/worlds'}
-                            className="mt-4 w-full py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors text-sm font-medium"
-                          >
-                            Enter World
-                          </button>
-                        )}
                       </div>
-                      
-                      <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
                     </div>
                   ))}
                 </div>
@@ -542,8 +565,8 @@ const StudentDashboard = () => {
               {/* Recent Achievements */}
               <div>
                 <h2 className="text-2xl font-bold text-white mb-6">Recent Achievements</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {achievements.slice(0, 4).map((achievement, index) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {achievements.slice(0, 6).map((achievement, index) => (
                     <div key={index} className={`p-4 rounded-2xl border transition-all duration-300 ${
                       achievement.earned 
                         ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30' 
@@ -572,14 +595,14 @@ const StudentDashboard = () => {
                   </div>
                   <div className="flex space-x-3">
                     <button 
-                      onClick={() => window.location.href = '/worlds'}
+                      onClick={() => navigate('/worlds')}
                       className="px-6 py-3 bg-white/20 rounded-xl hover:bg-white/30 transition-colors"
                     >
                       Continue Learning
                     </button>
                     <button 
                       onClick={() => setActiveTab('achievements')}
-                      className="px-6 py-3 bg-white rounded-xl text-purple-600 hover:scale-105 transition-transform"
+                      className="px-6 py-3 bg-white rounded-xl text-purple-600 font-bold hover:scale-105 transition-transform"
                     >
                       View Achievements
                     </button>
@@ -588,22 +611,7 @@ const StudentDashboard = () => {
               </div>
             </div>
           )}
-
-          {/* Adventure Tab */}
-          {activeTab === 'adventure' && (
-            <div className="text-center py-20">
-              <div className="text-6xl mb-6">🗺️</div>
-              <h2 className="text-3xl font-bold text-white mb-4">Adventure Awaits!</h2>
-              <p className="text-blue-200 mb-8">Choose your next magical coding quest</p>
-              <button 
-                onClick={() => window.location.href = '/worlds'}
-                className="px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold rounded-2xl hover:scale-105 transition-transform"
-              >
-                Start Adventure
-              </button>
-            </div>
-          )}
-
+          
           {/* Achievements Tab */}
           {activeTab === 'achievements' && (
             <div className="space-y-6">
@@ -633,23 +641,17 @@ const StudentDashboard = () => {
                 {achievements.map((achievement, index) => (
                   <div key={index} className={`p-6 rounded-3xl border transition-all duration-300 ${
                     achievement.earned 
-                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30 transform hover:scale-105' 
+                      ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400/30' 
                       : 'bg-white/5 border-white/10'
                   }`}>
                     <div className="text-center">
-                      <div className="text-6xl mb-4">{achievement.icon}</div>
-                      <h3 className={`text-xl font-bold mb-2 ${achievement.earned ? 'text-green-300' : 'text-white/60'}`}>
+                      <div className="text-3xl mb-2">{achievement.icon}</div>
+                      <h3 className={`font-bold mb-1 ${achievement.earned ? 'text-green-300' : 'text-white/60'}`}>
                         {achievement.name}
                       </h3>
-                      <p className={`${achievement.earned ? 'text-green-200' : 'text-white/40'}`}>
+                      <p className={`text-xs ${achievement.earned ? 'text-green-200' : 'text-white/40'}`}>
                         {achievement.description}
                       </p>
-                      {achievement.earned && (
-                        <div className="mt-4 inline-flex items-center space-x-2 bg-green-500/20 px-3 py-1 rounded-full">
-                          <CheckCircle className="w-4 h-4 text-green-400" />
-                          <span className="text-green-300 text-sm">Unlocked</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -660,46 +662,46 @@ const StudentDashboard = () => {
           {/* Settings Tab */}
           {activeTab === 'settings' && (
             <div className="space-y-6">
-              <h2 className="text-3xl font-bold text-white">Wizard Settings</h2>
+              <h2 className="text-3xl font-bold text-white">Settings</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <User className="w-8 h-8 text-blue-400" />
-                    <h3 className="text-xl font-bold text-white">Profile Settings</h3>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <User className="w-6 h-6 text-blue-400" />
+                    <h3 className="text-xl font-bold text-white">Profile</h3>
                   </div>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-white/60 text-sm mb-1">Username</label>
+                      <label className="text-white/60 text-sm">Username</label>
                       <div className="text-white font-medium">{userData?.username}</div>
                     </div>
                     <div>
-                      <label className="block text-white/60 text-sm mb-1">Email</label>
+                      <label className="text-white/60 text-sm">Email</label>
                       <div className="text-white font-medium">{userData?.email}</div>
                     </div>
                     <div>
-                      <label className="block text-white/60 text-sm mb-1">Rank</label>
+                      <label className="text-white/60 text-sm">Rank</label>
                       <div className="text-white font-medium">{stats.rank}</div>
                     </div>
                   </div>
                 </div>
 
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <Volume2 className="w-8 h-8 text-purple-400" />
-                    <h3 className="text-xl font-bold text-white">Audio Settings</h3>
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Volume2 className="w-6 h-6 text-green-400" />
+                    <h3 className="text-xl font-bold text-white">Sound Settings</h3>
                   </div>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-white">Sound Effects</span>
-                      <button className="w-12 h-6 bg-green-500 rounded-full p-1">
-                        <div className="w-4 h-4 bg-white rounded-full transform translate-x-6"></div>
+                      <button className="w-12 h-6 bg-green-500 rounded-full relative">
+                        <div className="w-5 h-5 bg-white rounded-full absolute right-0.5 top-0.5"></div>
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-white">Background Music</span>
-                      <button className="w-12 h-6 bg-gray-500 rounded-full p-1">
-                        <div className="w-4 h-4 bg-white rounded-full"></div>
+                      <button className="w-12 h-6 bg-gray-500 rounded-full relative">
+                        <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5"></div>
                       </button>
                     </div>
                   </div>
