@@ -417,10 +417,102 @@ class ProgressService {
         return await this.initializeUserProgress(userId);
       }
 
+      // Migration: Add unlocked property if it doesn't exist
+      const needsMigration = this.needsUnlockedMigration(progressData);
+      if (needsMigration) {
+        console.log('Migrating user progress to add unlocked properties');
+        const migratedData = await this.migrateProgressData(userId, progressData);
+        return migratedData;
+      }
+
       return progressData;
     } catch (error) {
       console.error('Error getting dashboard data:', error);
       return null;
+    }
+  }
+
+  // Check if progress data needs migration for unlocked properties
+  needsUnlockedMigration(progressData) {
+    if (!progressData.worlds) return false;
+    
+    // Check if any level is missing the unlocked property
+    for (const worldKey in progressData.worlds) {
+      const world = progressData.worlds[worldKey];
+      if (world.levels) {
+        for (const levelKey in world.levels) {
+          const level = world.levels[levelKey];
+          if (level.unlocked === undefined) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // Migrate progress data to add unlocked properties
+  async migrateProgressData(userId, progressData) {
+    try {
+      const updateData = {};
+      
+      // Add unlocked property to all levels
+      if (progressData.worlds) {
+        // Village levels
+        if (progressData.worlds.village && progressData.worlds.village.levels) {
+          const villageLevels = progressData.worlds.village.levels;
+          if (villageLevels.level1 && villageLevels.level1.unlocked === undefined) {
+            updateData['worlds.village.levels.level1.unlocked'] = true;
+          }
+          if (villageLevels.level2 && villageLevels.level2.unlocked === undefined) {
+            updateData['worlds.village.levels.level2.unlocked'] = villageLevels.level1?.completed || false;
+          }
+          if (villageLevels.level3 && villageLevels.level3.unlocked === undefined) {
+            updateData['worlds.village.levels.level3.unlocked'] = villageLevels.level2?.completed || false;
+          }
+        }
+        
+        // Forest levels
+        if (progressData.worlds.forest && progressData.worlds.forest.levels) {
+          const forestLevels = progressData.worlds.forest.levels;
+          if (forestLevels.level4 && forestLevels.level4.unlocked === undefined) {
+            updateData['worlds.forest.levels.level4.unlocked'] = progressData.worlds.forest.unlocked || false;
+          }
+          if (forestLevels.level5 && forestLevels.level5.unlocked === undefined) {
+            updateData['worlds.forest.levels.level5.unlocked'] = forestLevels.level4?.completed || false;
+          }
+          if (forestLevels.level6 && forestLevels.level6.unlocked === undefined) {
+            updateData['worlds.forest.levels.level6.unlocked'] = forestLevels.level5?.completed || false;
+          }
+        }
+        
+        // Mountain levels
+        if (progressData.worlds.mountain && progressData.worlds.mountain.levels) {
+          const mountainLevels = progressData.worlds.mountain.levels;
+          if (mountainLevels.level7 && mountainLevels.level7.unlocked === undefined) {
+            updateData['worlds.mountain.levels.level7.unlocked'] = progressData.worlds.mountain.unlocked || false;
+          }
+          if (mountainLevels.level8 && mountainLevels.level8.unlocked === undefined) {
+            updateData['worlds.mountain.levels.level8.unlocked'] = mountainLevels.level7?.completed || false;
+          }
+          if (mountainLevels.level9 && mountainLevels.level9.unlocked === undefined) {
+            updateData['worlds.mountain.levels.level9.unlocked'] = mountainLevels.level8?.completed || false;
+          }
+        }
+      }
+      
+      // Update the database
+      if (Object.keys(updateData).length > 0) {
+        const progressRef = doc(db, 'userProgress', userId);
+        await updateDoc(progressRef, updateData);
+        console.log('Migration completed, updated data:', updateData);
+      }
+      
+      // Return the updated progress data
+      return await this.getUserProgress(userId);
+    } catch (error) {
+      console.error('Error migrating progress data:', error);
+      return progressData;
     }
   }
 }
