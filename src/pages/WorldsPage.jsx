@@ -107,12 +107,31 @@ const WorldsPage = () => {
         unlocked: worldsData.village.unlocked,
         progress: worldsData.village.progress,
         description: "Learn the fundamentals of coding through village adventures",
-        levels: Object.entries(worldsData.village.levels).map(([key, level]) => ({
-          ...level,
-          id: parseInt(key.replace('level', '')),
-          name: level.name || `Level ${key.replace('level', '')}`,
-          unlocked: level.unlocked !== undefined ? level.unlocked : (key === 'level1' && worldsData.village.unlocked)
-        })),
+        levels: Object.entries(worldsData.village.levels).map(([key, level]) => {
+          const levelId = parseInt(key.replace('level', ''));
+          let isUnlocked = false;
+          
+          // Level 1 is always unlocked if the world is unlocked
+          if (key === 'level1' && worldsData.village.unlocked) {
+            isUnlocked = true;
+          }
+          // Use the stored unlocked status if available
+          else if (level.unlocked !== undefined) {
+            isUnlocked = level.unlocked;
+          }
+          // If completed, it should be unlocked
+          else if (level.completed) {
+            isUnlocked = true;
+          }
+          
+          console.log(`Village Level ${levelId}:`, { key, level, isUnlocked });
+          return {
+            ...level,
+            id: levelId,
+            name: level.name || `Level ${key.replace('level', '')}`,
+            unlocked: isUnlocked
+          };
+        }),
         completed: worldsData.village.progress === 100
       },
       {
@@ -125,12 +144,31 @@ const WorldsPage = () => {
         unlocked: worldsData.forest.unlocked,
         progress: worldsData.forest.progress,
         description: "Master conditional logic through mystical forest challenges",
-        levels: Object.entries(worldsData.forest.levels).map(([key, level]) => ({
-          ...level,
-          id: parseInt(key.replace('level', '')),
-          name: level.name || `Level ${key.replace('level', '')}`,
-          unlocked: level.unlocked !== undefined ? level.unlocked : false
-        })),
+        levels: Object.entries(worldsData.forest.levels).map(([key, level]) => {
+          const levelId = parseInt(key.replace('level', ''));
+          let isUnlocked = false;
+          
+          // Level 4 (first forest level) is unlocked if the forest world is unlocked
+          if (key === 'level4' && worldsData.forest.unlocked) {
+            isUnlocked = true;
+          }
+          // Use the stored unlocked status if available
+          else if (level.unlocked !== undefined) {
+            isUnlocked = level.unlocked;
+          }
+          // If completed, it should be unlocked
+          else if (level.completed) {
+            isUnlocked = true;
+          }
+          
+          console.log(`Forest Level ${levelId}:`, { key, level, isUnlocked });
+          return {
+            ...level,
+            id: levelId,
+            name: level.name || `Level ${key.replace('level', '')}`,
+            unlocked: isUnlocked
+          };
+        }),
         completed: worldsData.forest.progress === 100
       },
       {
@@ -143,19 +181,43 @@ const WorldsPage = () => {
         unlocked: worldsData.mountain.unlocked,
         progress: worldsData.mountain.progress,
         description: "Conquer repetition and loops in the magical mountains",
-        levels: Object.entries(worldsData.mountain.levels).map(([key, level]) => ({
-          ...level,
-          id: parseInt(key.replace('level', '')),
-          name: level.name || `Level ${key.replace('level', '')}`,
-          unlocked: level.unlocked !== undefined ? level.unlocked : false
-        })),
+        levels: Object.entries(worldsData.mountain.levels).map(([key, level]) => {
+          const levelId = parseInt(key.replace('level', ''));
+          let isUnlocked = false;
+          
+          // Level 7 (first mountain level) is unlocked if the mountain world is unlocked
+          if (key === 'level7' && worldsData.mountain.unlocked) {
+            isUnlocked = true;
+          }
+          // Use the stored unlocked status if available
+          else if (level.unlocked !== undefined) {
+            isUnlocked = level.unlocked;
+          }
+          // If completed, it should be unlocked
+          else if (level.completed) {
+            isUnlocked = true;
+          }
+          
+          console.log(`Mountain Level ${levelId}:`, { key, level, isUnlocked });
+          return {
+            ...level,
+            id: levelId,
+            name: level.name || `Level ${key.replace('level', '')}`,
+            unlocked: isUnlocked
+          };
+        }),
         completed: worldsData.mountain.progress === 100
       }
     ];
   };
 
   const handleLevelClick = (levelId, isUnlocked) => {
-    if (!isUnlocked) return;
+    console.log('Level click:', { levelId, isUnlocked });
+    if (!isUnlocked) {
+      console.log('Level is locked, cannot navigate');
+      return;
+    }
+    console.log('Navigating to level:', levelId);
     navigate(`/level-${levelId}`);
   };
 
